@@ -146,6 +146,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return loginWithEmail(email, pass);
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (error: any) {
+      throw new Error(error.message);
+    }
+  };
+
   const logout = async () => {
     await signOut(auth);
   };
