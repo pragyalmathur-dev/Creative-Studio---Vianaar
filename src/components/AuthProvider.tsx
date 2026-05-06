@@ -116,26 +116,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error("Auth error code:", error.code);
       
-      // 2. If user doesn't exist, check if they are allowed (First-time login)
-      if (error.code === 'auth/user-not-found') {
+      // 2. Handle potential first-time login (Firebase returns invalid-credential or user-not-found)
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
         const q = query(collection(db, 'profiles'), where('email', '==', cleanEmail));
         const snap = await getDocs(q);
         
         if (!snap.empty || cleanEmail === 'pragyalmathur@gmail.com') {
-          // Allowed: Initialize their account with this password
+          // Authorized: Attempt to initialize/register if they don't have an auth account yet
           try {
             await createUserWithEmailAndPassword(auth, cleanEmail, pass);
             return;
           } catch (regErr: any) {
-            throw new Error("Account initialization failed. " + regErr.message);
+            if (regErr.code === 'auth/email-already-in-use') {
+              // Account actually exists, so the original error was indeed a wrong password
+              throw new Error("Incorrect passcode. If you've forgotten it, please use the Reset Passcode option.");
+            }
+            throw new Error("Login failed: " + regErr.message);
           }
         }
-        throw new Error("Access Denied: Your email is not in the Vianaar authorized directory.");
+        throw new Error("Access Denied: Your email is not found in the Vianaar authorized directory.");
       }
       
-      // 3. Handle standard errors
-      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        throw new Error("Incorrect passcode. If this is your first time, ensure you've been added to the directory by an administrator.");
+      // 3. Handle other standard errors
+      if (error.code === 'auth/wrong-password') {
+        throw new Error("Incorrect passcode. Please check your credentials.");
       }
       throw error;
     }
