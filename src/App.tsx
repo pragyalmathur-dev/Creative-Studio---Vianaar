@@ -9,27 +9,42 @@ import { LogIn, ArrowRight, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 function AppContent() {
-  const { user, profile, loading, signIn, loginWithEmail, registerWithEmail } = useAuth();
+  const { user, profile, loading, signIn, loginWithEmail, registerWithEmail, resetPassword } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [portal, setPortal] = useState<'admin' | 'user' | null>(null);
-  const [authMode, setAuthMode] = useState<'options' | 'login' | 'register'>('options');
+  const [authMode, setAuthMode] = useState<'options' | 'login'>('options');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     setAuthLoading(true);
     try {
-      if (authMode === 'login') {
-        await loginWithEmail(email, password);
-      } else {
-        await registerWithEmail(email, password);
-      }
+      await loginWithEmail(email, password);
     } catch (err: any) {
       setError(err.message || "Authentication failed.");
+      setAuthLoading(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!email) {
+      setError("Please enter your email address first.");
+      return;
+    }
+    setError(null);
+    setAuthLoading(true);
+    try {
+      await resetPassword(email);
+      setSuccess("Password reset email sent. Please check your inbox.");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
       setAuthLoading(false);
     }
   };
@@ -82,11 +97,11 @@ function AppContent() {
                   {/* Admin Portal Group */}
                   <div className="space-y-2">
                     <button 
-                      onClick={() => setPortal('admin')}
-                      className={`w-full group flex items-center justify-between p-6 bg-white border ${portal === 'admin' ? 'border-brand-primary' : 'border-neutral-sand'} hover:border-brand-primary transition-all duration-300`}
+                      onClick={() => { setPortal('admin'); setAuthMode('login'); }}
+                      className="w-full group flex items-center justify-between p-6 bg-white border border-neutral-sand hover:border-brand-primary transition-all duration-300"
                     >
                       <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded flex items-center justify-center transition-colors ${portal === 'admin' ? 'bg-brand-primary text-white' : 'bg-brand-primary/10 text-brand-primary'}`}>
+                        <div className="p-3 bg-brand-primary/10 rounded flex items-center justify-center text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition-colors">
                           <LogIn size={20} />
                         </div>
                         <div className="text-left">
@@ -94,23 +109,18 @@ function AppContent() {
                           <p className="text-[10px] text-neutral-black/40 uppercase tracking-wider font-semibold">Governance & Oversight</p>
                         </div>
                       </div>
+                      <ArrowRight size={16} className="text-neutral-black/20 group-hover:text-brand-primary transition-all group-hover:translate-x-1" />
                     </button>
-                    {portal === 'admin' && (
-                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2">
-                        <button onClick={() => setAuthMode('login')} className="flex-1 bg-brand-primary text-white py-3 text-[10px] font-bold uppercase tracking-widest">Login</button>
-                        <button onClick={() => setAuthMode('register')} className="flex-1 border border-brand-primary text-brand-primary py-3 text-[10px] font-bold uppercase tracking-widest">Register</button>
-                      </motion.div>
-                    )}
                   </div>
 
                   {/* User Portal Group */}
                   <div className="space-y-2">
                     <button 
-                      onClick={() => setPortal('user')}
-                      className={`w-full group flex items-center justify-between p-6 bg-white border ${portal === 'user' ? 'border-brand-accent-2' : 'border-neutral-sand'} hover:border-brand-accent-2 transition-all duration-300`}
+                      onClick={() => { setPortal('user'); setAuthMode('login'); }}
+                      className="w-full group flex items-center justify-between p-6 bg-white border border-neutral-sand hover:border-brand-accent-2 transition-all duration-300"
                     >
                       <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded flex items-center justify-center transition-colors ${portal === 'user' ? 'bg-brand-accent-2 text-white' : 'bg-brand-accent-2/10 text-brand-accent-4'}`}>
+                        <div className="p-3 bg-brand-accent-2/10 rounded flex items-center justify-center text-brand-accent-4 group-hover:bg-brand-accent-2 group-hover:text-white transition-colors">
                           <LogIn size={20} />
                         </div>
                         <div className="text-left">
@@ -118,13 +128,8 @@ function AppContent() {
                           <p className="text-[10px] text-neutral-black/40 uppercase tracking-wider font-semibold">Sales Member Access</p>
                         </div>
                       </div>
+                      <ArrowRight size={16} className="text-neutral-black/20 group-hover:text-brand-accent-2 transition-all group-hover:translate-x-1" />
                     </button>
-                    {portal === 'user' && (
-                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2">
-                        <button onClick={() => setAuthMode('login')} className="flex-1 bg-brand-accent-2 text-white py-3 text-[10px] font-bold uppercase tracking-widest">Login</button>
-                        <button onClick={() => setAuthMode('register')} className="flex-1 border border-brand-accent-2 text-brand-accent-4 py-3 text-[10px] font-bold uppercase tracking-widest">Register</button>
-                      </motion.div>
-                    )}
                   </div>
                 </motion.div>
               ) : (
@@ -146,10 +151,10 @@ function AppContent() {
                   
                   <div>
                     <h2 className="text-2xl font-serif font-bold text-brand-dark mb-1">
-                      {authMode === 'login' ? 'Authorize' : 'Initialize'} {portal === 'admin' ? 'Admin' : 'User'}
+                      {portal === 'admin' ? 'Administrative' : 'Sales Member'} Terminal
                     </h2>
                     <p className="text-xs text-neutral-black/50 font-medium">
-                      {authMode === 'login' ? 'Continue to your dashboard' : 'Set up your access credentials'}
+                      Enter your authorized email. First-time users: Enter the password you wish to initialize your account with.
                     </p>
                   </div>
 
@@ -166,7 +171,12 @@ function AppContent() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-neutral-black/40 tracking-widest">Passcode</label>
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] uppercase font-bold text-neutral-black/40 tracking-widest">Passcode</label>
+                        {authMode === 'login' && (
+                          <button type="button" onClick={handleReset} className="text-[9px] uppercase font-bold text-brand-primary hover:underline">Forgot?</button>
+                        )}
+                      </div>
                       <input 
                         type="password" 
                         required
@@ -175,15 +185,17 @@ function AppContent() {
                         className="w-full bg-neutral-grey border-b-2 border-transparent focus:border-brand-primary p-3 text-sm outline-none transition-all"
                         placeholder="••••••••"
                       />
-                      {authMode === 'register' && (
-                        <p className="text-[9px] text-neutral-black/30 mt-1 italic">Use your temporary password or create a new one.</p>
-                      )}
                     </div>
                   </div>
 
                   {error && (
                     <div className="p-3 bg-brand-accent-3/10 border-l-4 border-brand-accent-3 text-[10px] text-brand-accent-3 font-bold">
                       {error}
+                    </div>
+                  )}
+                  {success && (
+                    <div className="p-3 bg-brand-light/10 border-l-4 border-brand-primary text-[10px] text-brand-primary font-bold">
+                      {success}
                     </div>
                   )}
 
@@ -193,7 +205,7 @@ function AppContent() {
                     className="w-full bg-brand-primary text-white py-4 font-bold text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-brand-dark transition-all transform hover:scale-[1.02] shadow-lg disabled:bg-neutral-grey disabled:scale-100"
                   >
                     {authLoading ? <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full"></div> : <ShieldCheck size={18} />}
-                    {authMode === 'login' ? 'Authorize Access' : 'Register Identity'}
+                    Authorize Identity
                   </button>
                 </motion.form>
               )}

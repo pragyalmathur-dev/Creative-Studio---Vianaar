@@ -8,7 +8,8 @@ import {
   User,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  updatePassword
+  updatePassword,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp, query, collection, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { UserProfile, UserRole } from '../types';
@@ -20,6 +21,7 @@ interface AuthContextType {
   signIn: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -107,33 +109,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginWithEmail = async (email: string, pass: string) => {
+    const cleanEmail = email.toLowerCase().trim();
     try {
-      await signInWithEmailAndPassword(auth, email, pass);
+      // 1. Try to sign in
+      await signInWithEmailAndPassword(auth, cleanEmail, pass);
     } catch (error: any) {
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        throw new Error("Invalid credentials. If you haven't set a password yet, please use the Register option.");
+      console.error("Auth error code:", error.code);
+      
+      // 2. If user doesn't exist, check if they are allowed (First-time login)
+      if (error.code === 'auth/user-not-found') {
+        const q = query(collection(db, 'profiles'), where('email', '==', cleanEmail));
+        const snap = await getDocs(q);
+        
+        if (!snap.empty || cleanEmail === 'pragyalmathur@gmail.com') {
+          // Allowed: Initialize their account with this password
+          try {
+            await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+            return;
+          } catch (regErr: any) {
+            throw new Error("Account initialization failed. " + regErr.message);
+          }
+        }
+        throw new Error("Access Denied: Your email is not in the Vianaar authorized directory.");
+      }
+      
+      // 3. Handle standard errors
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        throw new Error("Incorrect passcode. If this is your first time, ensure you've been added to the directory by an administrator.");
       }
       throw error;
     }
   };
 
   const registerWithEmail = async (email: string, pass: string) => {
-    // Check if email is in allowlist
-    const q = query(collection(db, 'profiles'), where('email', '==', email.toLowerCase().trim()));
-    const snap = await getDocs(q);
-    
-    if (snap.empty && email !== 'pragyalmathur@gmail.com') {
-      throw new Error("Access Denied: This email ID is not recognized by the Vianaar Directory.");
-    }
-    
-    try {
-      await createUserWithEmailAndPassword(auth, email, pass);
-    } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        throw new Error("This account already exists. Please use the Login option instead.");
-      }
-      throw error;
-    }
+    // This is now handled internally by loginWithEmail for better UX
+    return loginWithEmail(email, pass);
   };
 
   const logout = async () => {
@@ -141,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, loginWithEmail, registerWithEmail, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, loginWithEmail, registerWithEmail, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
