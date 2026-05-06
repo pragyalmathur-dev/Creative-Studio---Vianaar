@@ -11,20 +11,15 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.email == 'pragyalmathur@gmail.com' ||
-        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin'
+        request.auth.token.email.lower() == 'pragyalmathur@gmail.com' ||
+        (exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin')
       );
     }
 
-    match /profiles/{profileId} {
-      // Allow searching profiles by email for login validation (Public read for allowlist check)
-      allow read: if true;
-      
-      // Allow admins to manage profiles (create via directory)
-      allow create, update, delete: if isAdmin();
-      
-      // Allow users to claim/update their own profile
-      allow write: if isSignedIn() && (request.auth.uid == profileId || isAdmin());
+    match /profiles/{userId} {
+      allow read, list: if true;
+      allow write: if isSignedIn();
     }
 
     match /templates/{templateId} {

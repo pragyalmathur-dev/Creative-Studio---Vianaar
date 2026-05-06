@@ -19,6 +19,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
+  registerWithEmail: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -110,18 +111,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await signInWithEmailAndPassword(auth, email, pass);
     } catch (error: any) {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        // For default password flow: check if email is in allowlist
-        const q = query(collection(db, 'profiles'), where('email', '==', email));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          // Email allowed, try to auto-signup with default password
-          await createUserWithEmailAndPassword(auth, email, pass);
-        } else {
-          throw new Error("Access Denied: This email ID is not recognized by the Vianaar Directory.");
-        }
-      } else {
-        throw error;
+        throw new Error("Invalid credentials. If you haven't set a password yet, please use the Register option.");
       }
+      throw error;
+    }
+  };
+
+  const registerWithEmail = async (email: string, pass: string) => {
+    // Check if email is in allowlist
+    const q = query(collection(db, 'profiles'), where('email', '==', email.toLowerCase().trim()));
+    const snap = await getDocs(q);
+    
+    if (snap.empty && email !== 'pragyalmathur@gmail.com') {
+      throw new Error("Access Denied: This email ID is not recognized by the Vianaar Directory.");
+    }
+    
+    try {
+      await createUserWithEmailAndPassword(auth, email, pass);
+    } catch (error: any) {
+      if (error.code === 'auth/email-already-in-use') {
+        throw new Error("This account already exists. Please use the Login option instead.");
+      }
+      throw error;
     }
   };
 
@@ -130,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, loginWithEmail, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, loginWithEmail, registerWithEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );
