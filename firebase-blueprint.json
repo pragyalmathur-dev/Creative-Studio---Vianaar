@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "profile": {
+      "title": "User Profile",
+      "description": "Stores user role and basic info.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "sales"] },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "template": {
+      "title": "Master Creative Template",
+      "description": "Definition of a master template image and its editable fields.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "assignedTo": { "type": "array", "description": "List of user UIDs who have access to this template. Admin has access to all." },
+        "editableFields": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "boolean" },
+            "itinerary": { "type": "boolean" },
+            "bio": { "type": "boolean" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["name", "imageUrl", "editableFields"]
+    },
+    "edit_history": {
+      "title": "Edit History Log",
+      "description": "Audit log for every save/download action.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "templateId": { "type": "string" },
+        "templateName": { "type": "string" },
+        "action": { "type": "string", "enum": ["save", "download"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "contentSnapshot": { "type": "object", "description": "The values of edited fields at the time of action." }
+      },
+      "required": ["userId", "templateId", "action", "timestamp"]
+    }
+  },
+  "firestore": {
+    "profiles/{userId}": {
+      "schema": "profile",
+      "description": "Collection of user profiles."
+    },
+    "templates/{templateId}": {
+      "schema": "template",
+      "description": "Collection of master templates."
+    },
+    "edit_history/{logId}": {
+      "schema": "edit_history",
+      "description": "Audit log of all creative edits."
+    }
+  }
+}

@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Cardo:wght@400;700&family=Mulish:wght@300;400;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cardo", serif;
+  --font-sans: "Mulish", sans-serif;
+  
+  /* Brand Colors */
+  --color-brand-primary: #257057;
+  --color-brand-dark: #234D3B;
+  --color-brand-light: #D9E8C0;
+  --color-brand-accent-1: #B9816B;
+  --color-brand-accent-2: #BF9861;
+  --color-brand-accent-3: #A55E3F;
+  --color-brand-accent-4: #AA783B;
+  
+  /* Neutrals */
+  --color-neutral-sand: #E3D5C9;
+  --color-neutral-grey: #EEEEEE;
+  --color-neutral-cream: #FFFEF7;
+  --color-neutral-black: #302F2C;
+}
+
+@layer base {
+  body {
+    @apply bg-neutral-cream text-neutral-black font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
