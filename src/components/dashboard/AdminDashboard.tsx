@@ -263,6 +263,11 @@ export default function AdminDashboard() {
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
+                              const limit = isSuperAdmin ? 1024 * 1024 : 512 * 1024;
+                              if (file.size > limit) {
+                                alert(`File too large. ${isSuperAdmin ? 'Super Admin' : 'Admin'} limit is ${isSuperAdmin ? '1MB' : '500KB'}.`);
+                                return;
+                              }
                               const reader = new FileReader();
                               reader.onload = (event) => {
                                 const result = event.target?.result as string;

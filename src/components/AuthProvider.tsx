@@ -11,7 +11,7 @@ import {
   updatePassword,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, query, collection, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, query, collection, where, getDocs, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { UserProfile, UserRole } from '../types';
 
 interface AuthContextType {
@@ -33,99 +33,112 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeProfile: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
+
       if (user) {
         const profileRef = doc(db, 'profiles', user.uid);
-        const profileSnap = await getDoc(profileRef);
         
-        if (profileSnap.exists()) {
-          const data = profileSnap.data() as UserProfile;
-          
-          // Ensure pragyalmathur@gmail.com is always super_admin if they exist
-          if (user.email === 'pragyalmathur@gmail.com' && data.role !== 'super_admin') {
-            await setDoc(profileRef, { role: 'super_admin', status: 'active' }, { merge: true });
-            data.role = 'super_admin';
-            data.status = 'active';
-          }
-          
-          if (data.status === 'restricted') {
-            await signOut(auth);
-            setProfile(null);
-            throw new Error("Your access to this portal has been restricted by a Super Admin.");
-          }
-          
-          setProfile(data);
-        } else {
-          // Check if any admin exists at all
-          const adminsQuery = query(collection(db, 'profiles'), where('role', 'in', ['admin', 'super_admin']));
-          const adminsSnap = await getDocs(adminsQuery);
-          
-          if (adminsSnap.empty) {
-            // FIRST USER EVER - Make them super admin
-            const newProfile: UserProfile = {
-              uid: user.uid,
-              email: user.email || '',
-              role: 'super_admin',
-              status: 'active',
-              displayName: user.displayName || 'Super Admin'
-            };
-            await setDoc(profileRef, {
-              ...newProfile,
-              createdAt: serverTimestamp()
-            });
-            setProfile(newProfile);
-          } else {
-            // Profile doesn't exist yet, check directory or requests
-            const q = query(collection(db, 'profiles'), where('email', '==', user.email));
-            const querySnap = await getDocs(q);
+        // Listen to profile changes in real-time
+        unsubscribeProfile = onSnapshot(profileRef, async (profileSnap) => {
+          if (profileSnap.exists()) {
+            const data = profileSnap.data() as UserProfile;
             
-            if (!querySnap.empty) {
-              const existingData = querySnap.docs[0].data();
-              const existingId = querySnap.docs[0].id;
-              
+            // Ensure pragyalmathur@gmail.com is always super_admin if they exist
+            if (user.email === 'pragyalmathur@gmail.com' && data.role !== 'super_admin') {
+              await setDoc(profileRef, { role: 'super_admin', status: 'active' }, { merge: true });
+              // Snapshot will trigger again
+              return;
+            }
+            
+            if (data.status === 'restricted') {
+              await signOut(auth);
+              setProfile(null);
+              // We can't easily throw inside onSnapshot and catch it in UI transition
+              // but signout will trigger auth change which clears profile.
+              return;
+            }
+            
+            setProfile(data);
+          } else {
+            // Check if any admin exists at all
+            const adminsQuery = query(collection(db, 'profiles'), where('role', 'in', ['admin', 'super_admin']));
+            const adminsSnap = await getDocs(adminsQuery);
+            
+            if (adminsSnap.empty) {
+              // FIRST USER EVER - Make them super admin
               const newProfile: UserProfile = {
                 uid: user.uid,
                 email: user.email || '',
-                role: existingData.role || 'sales',
-                status: existingData.status || 'active',
-                displayName: user.displayName || existingData.displayName || ''
+                role: 'super_admin',
+                status: 'active',
+                displayName: user.displayName || 'Super Admin'
               };
-              
               await setDoc(profileRef, {
                 ...newProfile,
-                claimedAt: serverTimestamp()
+                createdAt: serverTimestamp()
               });
-              
-              if (existingId !== user.uid) {
-                await deleteDoc(doc(db, 'profiles', existingId));
-              }
-              
-              setProfile(newProfile);
+              // This setDoc will trigger the snapshot listener
             } else {
-              // Not in directory, if they reached here via signup, they are a new request
-              const newProfile: UserProfile = {
-                uid: user.uid,
-                email: user.email || '',
-                role: 'admin', // Default to admin for requests
-                status: 'pending',
-                displayName: user.displayName || 'Pending Admin'
-              };
-              await setDoc(profileRef, { 
-                ...newProfile, 
-                createdAt: serverTimestamp() 
-              });
-              setProfile(newProfile);
+              // Profile doesn't exist yet, check directory or requests
+              const q = query(collection(db, 'profiles'), where('email', '==', user.email));
+              const querySnap = await getDocs(q);
+              
+              if (!querySnap.empty) {
+                const existingData = querySnap.docs[0].data();
+                const existingId = querySnap.docs[0].id;
+                
+                const newProfile: UserProfile = {
+                  uid: user.uid,
+                  email: user.email || '',
+                  role: existingData.role || 'sales',
+                  status: existingData.status || 'active',
+                  displayName: user.displayName || existingData.displayName || ''
+                };
+                
+                await setDoc(profileRef, {
+                  ...newProfile,
+                  claimedAt: serverTimestamp()
+                });
+                
+                if (existingId !== user.uid) {
+                  await deleteDoc(doc(db, 'profiles', existingId));
+                }
+              } else {
+                // Not in directory, if they reached here via signup, they are a new request
+                const newProfile: UserProfile = {
+                  uid: user.uid,
+                  email: user.email || '',
+                  role: 'admin',
+                  status: 'pending',
+                  displayName: user.displayName || 'Pending Admin'
+                };
+                await setDoc(profileRef, { 
+                  ...newProfile, 
+                  createdAt: serverTimestamp() 
+                });
+              }
             }
           }
-        }
+          setLoading(false);
+        });
       } else {
         setProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) (unsubscribeProfile as any)();
+    };
   }, []);
 
   const signIn = async () => {

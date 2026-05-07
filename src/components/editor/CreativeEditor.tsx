@@ -13,7 +13,8 @@ interface CreativeEditorProps {
 }
 
 export default function CreativeEditor({ template, onBack }: CreativeEditorProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const isAdmin = ['admin', 'super_admin'].includes(profile?.role || '');
   const [formData, setFormData] = useState({
     name: '',
     itinerary: '',
@@ -28,6 +29,7 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
       await addDoc(collection(db, 'edit_history'), {
         userId: user?.uid,
         userEmail: user?.email,
+        userRole: profile?.role,
         templateId: template.id,
         templateName: template.name,
         action,
@@ -158,7 +160,11 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
       <div className="flex-1 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-black/40">Live Preview Output</p>
-          <span className="text-[10px] text-brand-accent-3 font-bold border border-brand-accent-3 px-2 py-0.5 rounded">RESTRICTED LAYOUT</span>
+          {isAdmin ? (
+            <span className="text-[10px] text-brand-primary font-bold border border-brand-primary px-2 py-0.5 rounded">ADMIN CONTROL</span>
+          ) : (
+            <span className="text-[10px] text-brand-accent-3 font-bold border border-brand-accent-3 px-2 py-0.5 rounded">RESTRICTED LAYOUT (TEXT ONLY)</span>
+          )}
         </div>
 
         <div className="relative aspect-[4/5] bg-white shadow-2xl overflow-hidden group border border-neutral-sand" ref={editorRef}>
