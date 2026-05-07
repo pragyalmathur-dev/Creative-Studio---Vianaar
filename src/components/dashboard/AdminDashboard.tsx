@@ -562,7 +562,7 @@ export default function AdminDashboard() {
                        Approve Access
                      </button>
                      <button 
-                       onClick={() => handleUpdateStatus((u as any).id || u.uid, 'rejected')}
+                       onClick={() => handleDeleteUser((u as any).id || u.uid)}
                        className="flex-1 border border-brand-accent-3 text-brand-accent-3 py-2 text-[10px] uppercase font-bold tracking-widest hover:bg-brand-accent-3 hover:text-white transition-all"
                      >
                        Reject
