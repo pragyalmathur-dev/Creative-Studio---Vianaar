@@ -20,7 +20,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
-  registerWithEmail: (email: string, pass: string) => Promise<void>;
+  registerWithEmail: (email: string, pass: string, requestedRole?: UserRole) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -184,39 +184,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const registerWithEmail = async (email: string, pass: string) => {
+  const registerWithEmail = async (email: string, pass: string, requestedRole: UserRole = 'sales') => {
     const cleanEmail = email.toLowerCase().trim();
     
     // 1. Check if first user
     const adminsQuery = query(collection(db, 'profiles'), where('role', 'in', ['admin', 'super_admin']));
     const adminsSnap = await getDocs(adminsQuery);
     
-    if (adminsSnap.empty) {
-      // Allow registration directly
-      await createUserWithEmailAndPassword(auth, cleanEmail, pass);
-      return;
-    }
+    const isFirstUser = adminsSnap.empty;
+    const finalRole = isFirstUser ? 'super_admin' : requestedRole;
+    const finalStatus = isFirstUser ? 'active' : 'pending';
 
-    // 2. Not first user, check if already in directory or needs request
-    const q = query(collection(db, 'profiles'), where('email', '==', cleanEmail));
-    const snap = await getDocs(q);
-    
-    if (!snap.empty) {
-      // In directory, allow registration
-      await createUserWithEmailAndPassword(auth, cleanEmail, pass);
-    } else {
-      // NOT in directory - This should technically be a "Registration Request"
-      // But for simplicity in this flow, we will let them register the AUTH account
-      // but their profile will be 'pending' if we change the create logic.
-      // However, the user specifically asked for "Super admin approves register requests".
-      
-      // We will allow the account creation but the profile will be created as 'pending' 
-      // in the onAuthStateChanged logic if we adjust it.
-      
-      await createUserWithEmailAndPassword(auth, cleanEmail, pass);
-      // We'll mark the profile as pending immediately after creation
-      // This will happen in onAuthStateChanged if we add logic there.
-    }
+    const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+    const user = userCredential.user;
+
+    // Create profile immediately to ensure requested role is preserved
+    const profileRef = doc(db, 'profiles', user.uid);
+    await setDoc(profileRef, {
+      uid: user.uid,
+      email: cleanEmail,
+      role: finalRole,
+      status: finalStatus,
+      displayName: user.displayName || (`Pending ${finalRole === 'admin' ? 'Admin' : 'Sales'}`),
+      createdAt: serverTimestamp()
+    });
   };
 
   const resetPassword = async (email: string) => {

@@ -29,8 +29,9 @@ function AppContent() {
       if (authMode === 'login') {
         await loginWithEmail(email, password);
       } else {
-        await registerWithEmail(email, password);
-        setSuccess("Registration successful! If you are not the first admin, your account status will be 'Pending Approval'.");
+        const requestedRole = portal === 'admin' ? 'admin' : 'sales';
+        await registerWithEmail(email, password, requestedRole);
+        setSuccess(`Registration successful! Your account status is 'Pending Approval' for the ${portal === 'admin' ? 'Admin' : 'User'} terminal.`);
       }
     } catch (err: any) {
       setError(err.message || "Authentication failed.");
@@ -257,14 +258,18 @@ function AppContent() {
                       {authMode === 'login' ? 'Authorize Identity' : 'Submit Registration'}
                     </button>
 
-                    {portal === 'admin' && (
+                    {(portal === 'admin' || portal === 'user') && (
                       <div className="pt-2 text-center">
                         <button 
                           type="button"
-                          onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+                          onClick={() => {
+                            setAuthMode(authMode === 'login' ? 'register' : 'login');
+                            setError(null);
+                            setSuccess(null);
+                          }}
                           className="text-[10px] uppercase font-bold tracking-widest text-brand-primary hover:underline"
                         >
-                          {authMode === 'login' ? 'No account? Register Now' : 'Back to Login'}
+                          {authMode === 'login' ? 'No account? Request Access' : 'Back to Login'}
                         </button>
                       </div>
                     )}

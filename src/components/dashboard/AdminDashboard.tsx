@@ -542,16 +542,22 @@ export default function AdminDashboard() {
                 >
                    <div className="flex items-start justify-between">
                      <div>
-                       <h3 className="text-lg font-serif font-bold text-neutral-black">{u.displayName || 'New Admin Request'}</h3>
+                       <h3 className="text-lg font-serif font-bold text-neutral-black">{u.displayName || 'New Access Request'}</h3>
                        <p className="text-xs text-brand-primary font-bold italic">{u.email}</p>
                      </div>
-                     <div className="p-2 bg-brand-primary/10 text-brand-primary rounded">
-                       <ShieldCheck size={20} />
+                     <div className={`p-2 rounded ${u.role === 'admin' ? 'bg-brand-primary/10 text-brand-primary' : 'bg-brand-accent-2/10 text-brand-accent-4'}`}>
+                       {u.role === 'admin' ? <ShieldCheck size={20} /> : <Users size={20} />}
                      </div>
                    </div>
                    
+                   <div className="flex items-center gap-2">
+                     <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded ${u.role === 'admin' ? 'bg-brand-primary/20 text-brand-primary' : 'bg-brand-accent-2/20 text-brand-accent-4'}`}>
+                       {u.role === 'admin' ? 'Admin Role Requested' : 'Sales Role Requested'}
+                     </span>
+                   </div>
+                   
                    <p className="text-xs text-neutral-black/50 leading-relaxed">
-                     Requested access to the administrative terminal. Verify identity before approving.
+                     Requested access to the <span className="font-bold text-neutral-black">{u.role === 'admin' ? 'Administrative terminal' : 'User (Sales) terminal'}</span>. Verify identity before approving.
                    </p>
 
                    <div className="flex gap-4 pt-4 border-t border-neutral-sand">
