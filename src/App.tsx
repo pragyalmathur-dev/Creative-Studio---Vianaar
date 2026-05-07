@@ -9,7 +9,7 @@ import { LogIn, ArrowRight, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 function AppContent() {
-  const { user, profile, loading, signIn, loginWithEmail, registerWithEmail, resetPassword } = useAuth();
+  const { user, profile, loading, signIn, loginWithEmail, registerWithEmail, resetPassword, logout } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [portal, setPortal] = useState<'admin' | 'user' | null>(null);
   const [authMode, setAuthMode] = useState<'options' | 'login' | 'register'>('options');
@@ -84,7 +84,7 @@ function AppContent() {
           </p>
           <div className="pt-4">
             <button 
-              onClick={() => useAuth().logout()}
+              onClick={() => logout()}
               className="text-[10px] uppercase font-bold tracking-widest text-brand-primary hover:underline"
             >
               Sign out and try later
