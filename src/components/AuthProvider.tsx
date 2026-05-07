@@ -41,54 +41,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (profileSnap.exists()) {
           const data = profileSnap.data() as UserProfile;
-          if (user.email === 'pragyalmathur@gmail.com' && data.role !== 'admin') {
-            await setDoc(profileRef, { role: 'admin' }, { merge: true });
-            data.role = 'admin';
+          
+          // Ensure pragyalmathur@gmail.com is always super_admin if they exist
+          if (user.email === 'pragyalmathur@gmail.com' && data.role !== 'super_admin') {
+            await setDoc(profileRef, { role: 'super_admin', status: 'active' }, { merge: true });
+            data.role = 'super_admin';
+            data.status = 'active';
           }
+          
+          if (data.status === 'restricted') {
+            await signOut(auth);
+            setProfile(null);
+            throw new Error("Your access to this portal has been restricted by a Super Admin.");
+          }
+          
           setProfile(data);
         } else {
-          // Check if they are in the pre-registered list
-          const q = query(collection(db, 'profiles'), where('email', '==', user.email));
-          const querySnap = await getDocs(q);
+          // Check if any admin exists at all
+          const adminsQuery = query(collection(db, 'profiles'), where('role', 'in', ['admin', 'super_admin']));
+          const adminsSnap = await getDocs(adminsQuery);
           
-          if (!querySnap.empty) {
-            const existingData = querySnap.docs[0].data();
-            const existingId = querySnap.docs[0].id;
-            
+          if (adminsSnap.empty) {
+            // FIRST USER EVER - Make them super admin
             const newProfile: UserProfile = {
               uid: user.uid,
               email: user.email || '',
-              role: existingData.role || 'sales',
-              displayName: user.displayName || existingData.displayName || ''
+              role: 'super_admin',
+              status: 'active',
+              displayName: user.displayName || 'Super Admin'
             };
-            
             await setDoc(profileRef, {
               ...newProfile,
-              claimedAt: serverTimestamp()
+              createdAt: serverTimestamp()
             });
-            
-            if (existingId !== user.uid) {
-              await deleteDoc(doc(db, 'profiles', existingId));
-            }
-            
             setProfile(newProfile);
           } else {
-            // User logged in but no profile found in directory (Revoked or never added)
-            if (user.email !== 'pragyalmathur@gmail.com') {
-              console.warn("Access revoked or not authorized.");
-              await signOut(auth);
-              setProfile(null);
-            } else {
-              // Create root admin profile
+            // Profile doesn't exist yet, check directory or requests
+            const q = query(collection(db, 'profiles'), where('email', '==', user.email));
+            const querySnap = await getDocs(q);
+            
+            if (!querySnap.empty) {
+              const existingData = querySnap.docs[0].data();
+              const existingId = querySnap.docs[0].id;
+              
               const newProfile: UserProfile = {
                 uid: user.uid,
                 email: user.email || '',
-                role: 'admin',
-                displayName: user.displayName || 'Root Admin'
+                role: existingData.role || 'sales',
+                status: existingData.status || 'active',
+                displayName: user.displayName || existingData.displayName || ''
               };
+              
               await setDoc(profileRef, {
                 ...newProfile,
-                createdAt: serverTimestamp()
+                claimedAt: serverTimestamp()
+              });
+              
+              if (existingId !== user.uid) {
+                await deleteDoc(doc(db, 'profiles', existingId));
+              }
+              
+              setProfile(newProfile);
+            } else {
+              // Not in directory, if they reached here via signup, they are a new request
+              const newProfile: UserProfile = {
+                uid: user.uid,
+                email: user.email || '',
+                role: 'admin', // Default to admin for requests
+                status: 'pending',
+                displayName: user.displayName || 'Pending Admin'
+              };
+              await setDoc(profileRef, { 
+                ...newProfile, 
+                createdAt: serverTimestamp() 
               });
               setProfile(newProfile);
             }
@@ -122,19 +147,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const snap = await getDocs(q);
         
         if (!snap.empty || cleanEmail === 'pragyalmathur@gmail.com') {
-          // Authorized: Attempt to initialize/register if they don't have an auth account yet
+          // Authorized in directory: Try to register if they don't have an account
           try {
             await createUserWithEmailAndPassword(auth, cleanEmail, pass);
             return;
           } catch (regErr: any) {
             if (regErr.code === 'auth/email-already-in-use') {
-              // Account actually exists, so the original error was indeed a wrong password
-              throw new Error("Incorrect passcode. If you've forgotten it, please use the Reset Passcode option.");
+              // Account exists. If they get here, the password was likely wrong.
+              // Note: If they have a GOOGLE account with this email, they must use Google login.
+              throw new Error("Incorrect passcode for this email. If you previously used 'Continue with Google', please use that again. Otherwise, use Reset Passcode.");
             }
-            throw new Error("Login failed: " + regErr.message);
+            throw new Error("Initialization failed: " + regErr.message);
           }
         }
-        throw new Error("Access Denied: Your email is not found in the Vianaar authorized directory.");
+        throw new Error("Access Denied: Your email is not in the authorized directory. Please contact an admin.");
       }
       
       // 3. Handle other standard errors
@@ -146,8 +172,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const registerWithEmail = async (email: string, pass: string) => {
-    // This is now handled internally by loginWithEmail for better UX
-    return loginWithEmail(email, pass);
+    const cleanEmail = email.toLowerCase().trim();
+    
+    // 1. Check if first user
+    const adminsQuery = query(collection(db, 'profiles'), where('role', 'in', ['admin', 'super_admin']));
+    const adminsSnap = await getDocs(adminsQuery);
+    
+    if (adminsSnap.empty) {
+      // Allow registration directly
+      await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+      return;
+    }
+
+    // 2. Not first user, check if already in directory or needs request
+    const q = query(collection(db, 'profiles'), where('email', '==', cleanEmail));
+    const snap = await getDocs(q);
+    
+    if (!snap.empty) {
+      // In directory, allow registration
+      await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+    } else {
+      // NOT in directory - This should technically be a "Registration Request"
+      // But for simplicity in this flow, we will let them register the AUTH account
+      // but their profile will be 'pending' if we change the create logic.
+      // However, the user specifically asked for "Super admin approves register requests".
+      
+      // We will allow the account creation but the profile will be created as 'pending' 
+      // in the onAuthStateChanged logic if we adjust it.
+      
+      await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+      // We'll mark the profile as pending immediately after creation
+      // This will happen in onAuthStateChanged if we add logic there.
+    }
   };
 
   const resetPassword = async (email: string) => {

@@ -9,27 +9,47 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function getProfile() {
+      return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email.lower() == 'pragyalmathur@gmail.com' ||
+        (exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
+         getProfile().role == 'super_admin')
+      );
+    }
+
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.email.lower() == 'pragyalmathur@gmail.com' ||
         (exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin')
+         getProfile().role in ['admin', 'super_admin'] && 
+         getProfile().status == 'active')
       );
     }
 
+    function isActive() {
+      return isSignedIn() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
+             getProfile().status == 'active';
+    }
+
     match /profiles/{userId} {
-      allow read, list: if true;
-      allow write: if isSignedIn();
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSuperAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow delete: if isSuperAdmin();
     }
 
     match /templates/{templateId} {
-      allow read: if isSignedIn();
+      allow read: if isActive();
       allow write: if isAdmin();
     }
 
     match /edit_history/{historyId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow read: if isAdmin();
+      allow create: if isActive();
       allow update, delete: if isAdmin();
     }
   }

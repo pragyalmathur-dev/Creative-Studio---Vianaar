@@ -12,9 +12,10 @@ function AppContent() {
   const { user, profile, loading, signIn, loginWithEmail, registerWithEmail, resetPassword } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [portal, setPortal] = useState<'admin' | 'user' | null>(null);
-  const [authMode, setAuthMode] = useState<'options' | 'login'>('options');
+  const [authMode, setAuthMode] = useState<'options' | 'login' | 'register'>('options');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
@@ -25,7 +26,12 @@ function AppContent() {
     setSuccess(null);
     setAuthLoading(true);
     try {
-      await loginWithEmail(email, password);
+      if (authMode === 'login') {
+        await loginWithEmail(email, password);
+      } else {
+        await registerWithEmail(email, password);
+        setSuccess("Registration successful! If you are not the first admin, your account status will be 'Pending Approval'.");
+      }
     } catch (err: any) {
       setError(err.message || "Authentication failed.");
       setAuthLoading(false);
@@ -56,6 +62,33 @@ function AppContent() {
           <span className="font-serif text-3xl font-bold text-brand-primary animate-pulse">VIANAAR</span>
           <div className="w-12 h-0.5 bg-brand-primary/20 overflow-hidden">
             <div className="h-full bg-brand-primary animate-[loading_1s_infinite]"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (profile?.status === 'pending') {
+    return (
+      <div className="min-h-screen bg-neutral-cream flex flex-col items-center justify-center p-6 bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')]">
+        <div className="max-w-md w-full bg-white p-12 shadow-2xl border border-neutral-sand text-center space-y-6">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 bg-brand-light/30 rounded-full flex items-center justify-center text-brand-primary animate-pulse">
+              <ShieldCheck size={40} />
+            </div>
+          </div>
+          <h2 className="text-3xl font-serif font-bold text-brand-dark italic">Registration Pending</h2>
+          <p className="text-sm text-neutral-black/60 leading-relaxed">
+            Your identity <span className="font-bold text-brand-primary">({profile.email})</span> has been submitted for verification. 
+            A Super Admin will review your request shortly.
+          </p>
+          <div className="pt-4">
+            <button 
+              onClick={() => useAuth().logout()}
+              className="text-[10px] uppercase font-bold tracking-widest text-brand-primary hover:underline"
+            >
+              Sign out and try later
+            </button>
           </div>
         </div>
       </div>
@@ -151,14 +184,29 @@ function AppContent() {
                   
                   <div>
                     <h2 className="text-2xl font-serif font-bold text-brand-dark mb-1">
-                      {portal === 'admin' ? 'Administrative' : 'Sales Member'} Terminal
+                      {portal === 'admin' ? (authMode === 'login' ? 'Administrative Login' : 'Admin Registration') : 'Sales Member Login'}
                     </h2>
                     <p className="text-xs text-neutral-black/50 font-medium">
-                      Enter your authorized email. First-time users: Enter the password you wish to initialize your account with.
+                      {authMode === 'login' 
+                        ? 'Enter your authorized credentials to access the terminal.' 
+                        : 'First person to register will be designated as Super Admin.'}
                     </p>
                   </div>
 
                   <div className="space-y-4">
+                    {authMode === 'register' && (
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-neutral-black/40 tracking-widest">Full Name</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={name}
+                          onChange={e => setName(e.target.value)}
+                          className="w-full bg-neutral-grey border-b-2 border-transparent focus:border-brand-primary p-3 text-sm outline-none transition-all"
+                          placeholder="Your Name"
+                        />
+                      </div>
+                    )}
                     <div className="space-y-1">
                       <label className="text-[10px] uppercase font-bold text-neutral-black/40 tracking-widest">Email Address</label>
                       <input 
@@ -206,10 +254,22 @@ function AppContent() {
                       className="w-full bg-brand-primary text-white py-4 font-bold text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-brand-dark transition-all transform hover:scale-[1.02] shadow-lg disabled:bg-neutral-grey disabled:scale-100"
                     >
                       {authLoading ? <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full"></div> : <ShieldCheck size={18} />}
-                      Authorize Identity
+                      {authMode === 'login' ? 'Authorize Identity' : 'Submit Registration'}
                     </button>
 
                     {portal === 'admin' && (
+                      <div className="pt-2 text-center">
+                        <button 
+                          type="button"
+                          onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+                          className="text-[10px] uppercase font-bold tracking-widest text-brand-primary hover:underline"
+                        >
+                          {authMode === 'login' ? 'No account? Register Now' : 'Back to Login'}
+                        </button>
+                      </div>
+                    )}
+
+                    {portal === 'admin' && authMode === 'login' && (
                       <>
                         <div className="relative pt-2">
                           <div className="absolute inset-0 flex items-center">
@@ -270,7 +330,7 @@ function AppContent() {
         />
       ) : (
         <>
-          {profile?.role === 'admin' ? (
+          {['admin', 'super_admin'].includes(profile?.role || '') ? (
             <AdminDashboard />
           ) : (
             <SalesDashboard onSelectTemplate={setSelectedTemplate} />

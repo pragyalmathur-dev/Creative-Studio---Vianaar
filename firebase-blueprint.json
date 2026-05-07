@@ -2,16 +2,30 @@
   "entities": {
     "profile": {
       "title": "User Profile",
-      "description": "Stores user role and basic info.",
+      "description": "Stores user role and status.",
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
         "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "sales"] },
+        "role": { "type": "string", "enum": ["super_admin", "admin", "sales"] },
+        "status": { "type": "string", "enum": ["active", "pending", "restricted"] },
         "displayName": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["uid", "email", "role"]
+      "required": ["uid", "email", "role", "status"]
+    },
+    "registration_request": {
+      "title": "Admin Registration Request",
+      "description": "Pending requests for admin access.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "requestedRole": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "status", "createdAt"]
     },
     "template": {
       "title": "Master Creative Template",
@@ -55,6 +69,10 @@
     "profiles/{userId}": {
       "schema": "profile",
       "description": "Collection of user profiles."
+    },
+    "registration_requests/{requestId}": {
+      "schema": "registration_request",
+      "description": "Collection of pending admin registration requests."
     },
     "templates/{templateId}": {
       "schema": "template",

@@ -1,4 +1,5 @@
-export type UserRole = 'admin' | 'sales';
+export type UserRole = 'super_admin' | 'admin' | 'sales';
+export type UserStatus = 'pending' | 'active' | 'restricted' | 'rejected';
 
 export interface UserProfile {
   uid?: string;
@@ -6,7 +7,17 @@ export interface UserProfile {
   role: UserRole;
   displayName?: string;
   designation?: string;
-  status?: 'pending' | 'active';
+  status: UserStatus;
+  createdAt?: any;
+}
+
+export interface RegistrationRequest {
+  id: string;
+  email: string;
+  name: string;
+  requestedRole: UserRole;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: any;
 }
 
 export interface EditableFields {

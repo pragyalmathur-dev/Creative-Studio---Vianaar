@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../lib/firebase';
-import { collection, query, getDocs, addDoc, serverTimestamp, onSnapshot, orderBy, where, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, setDoc, serverTimestamp, onSnapshot, orderBy, where, doc, deleteDoc } from 'firebase/firestore';
 import { useAuth } from '../AuthProvider';
 import { Template, EditHistory, UserProfile, UserRole } from '../../types';
 import { handleFirestoreError, OperationType } from '../../lib/errorUtils';
@@ -8,12 +8,13 @@ import { Plus, Users, Layout as LayoutIcon, Table as TableIcon, History, Search,
 import { motion } from 'motion/react';
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [history, setHistory] = useState<EditHistory[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showUserForm, setShowUserForm] = useState(false);
   const [newTemplate, setNewTemplate] = useState({
     name: '',
     imageUrl: '',
@@ -82,9 +83,22 @@ export default function AdminDashboard() {
     });
   };
 
-  const [activeTab, setActiveTab] = useState<'templates' | 'users' | 'audit'>('templates');
+  const [activeTab, setActiveTab] = useState<'templates' | 'users' | 'audit' | 'approvals'>('templates');
+  
+  const isSuperAdmin = profile?.role === 'super_admin';
 
-  const [showUserForm, setShowUserForm] = useState(false);
+  const handleUpdateStatus = async (profileId: string, newStatus: string, newRole?: string) => {
+    try {
+      const updateData: any = { status: newStatus };
+      if (newRole) updateData.role = newRole;
+      await setDoc(doc(db, 'profiles', profileId), updateData, { merge: true });
+      // Refresh
+      const snap = await getDocs(query(collection(db, 'profiles'), orderBy('email')));
+      setUsers(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as any)));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `profiles/${profileId}`);
+    }
+  };
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -193,6 +207,7 @@ export default function AdminDashboard() {
         {[
           { id: 'templates', label: 'Templates', icon: LayoutIcon },
           { id: 'users', label: 'User Directory', icon: Users },
+          ...(isSuperAdmin ? [{ id: 'approvals', label: 'Access Control', icon: ShieldCheck }] : []),
           { id: 'audit', label: 'Audit Log', icon: TableIcon }
         ].map(tab => (
           <button
@@ -454,13 +469,100 @@ export default function AdminDashboard() {
                     <h3 className="text-xl font-serif font-bold text-neutral-black">{u.displayName}</h3>
                     <p className="text-xs text-neutral-black/40 italic mb-4">{u.email}</p>
                     
-                    <div className="flex items-center gap-2 mt-auto">
-                      <div className={`w-2 h-2 rounded-full ${u.uid ? 'bg-green-500' : 'bg-neutral-sand'}`}></div>
-                      <span className="text-[10px] uppercase font-bold text-neutral-black/40">
-                        {u.uid ? 'Logged In / Active' : 'Pre-registered / Pending'}
-                      </span>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${u.status === 'active' ? 'bg-green-500' : u.status === 'restricted' ? 'bg-brand-accent-3' : 'bg-neutral-sand'}`}></div>
+                        <span className="text-[10px] uppercase font-bold text-neutral-black/40">
+                          {u.status || 'Active'}
+                        </span>
+                      </div>
+
+                      {isSuperAdmin && u.uid !== user?.uid && (
+                        <div className="flex gap-2 pt-2 border-t border-neutral-grey">
+                          {u.status !== 'active' && (
+                            <button 
+                              onClick={() => handleUpdateStatus((u as any).id || u.uid, 'active')}
+                              className="text-[9px] uppercase font-bold text-brand-primary hover:underline"
+                            >
+                              Activate
+                            </button>
+                          )}
+                          {u.status !== 'restricted' && (
+                            <button 
+                              onClick={() => handleUpdateStatus((u as any).id || u.uid, 'restricted')}
+                              className="text-[9px] uppercase font-bold text-brand-accent-3 hover:underline"
+                            >
+                              Restrict
+                            </button>
+                          )}
+                          {u.role !== 'admin' && (
+                            <button 
+                              onClick={() => handleUpdateStatus((u as any).id || u.uid, 'active', 'admin')}
+                              className="text-[9px] uppercase font-bold text-neutral-black/60 hover:underline"
+                            >
+                              Make Admin
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {isSuperAdmin && activeTab === 'approvals' && (
+          <div className="space-y-8">
+            <div className="flex items-end justify-between border-b border-neutral-sand pb-4">
+              <div>
+                <h2 className="text-2xl font-serif font-bold text-brand-dark">Pending Approvals</h2>
+                <p className="text-[10px] uppercase tracking-widest text-neutral-black/40 font-bold">Review Registration Requests</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {users.filter(u => u.status === 'pending').length === 0 && (
+                <div className="col-span-2 py-12 text-center bg-neutral-grey/20 border-2 border-dashed border-neutral-sand">
+                  <p className="text-sm italic text-neutral-black/30 font-bold uppercase tracking-widest">No pending requests found</p>
+                </div>
+              )}
+              {users.filter(u => u.status === 'pending').map((u, i) => (
+                <motion.div 
+                  key={u.email}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="bg-white border-2 border-brand-primary/20 p-6 flex flex-col gap-4 shadow-lg"
+                >
+                   <div className="flex items-start justify-between">
+                     <div>
+                       <h3 className="text-lg font-serif font-bold text-neutral-black">{u.displayName || 'New Admin Request'}</h3>
+                       <p className="text-xs text-brand-primary font-bold italic">{u.email}</p>
+                     </div>
+                     <div className="p-2 bg-brand-primary/10 text-brand-primary rounded">
+                       <ShieldCheck size={20} />
+                     </div>
+                   </div>
+                   
+                   <p className="text-xs text-neutral-black/50 leading-relaxed">
+                     Requested access to the administrative terminal. Verify identity before approving.
+                   </p>
+
+                   <div className="flex gap-4 pt-4 border-t border-neutral-sand">
+                     <button 
+                       onClick={() => handleUpdateStatus((u as any).id || u.uid, 'active')}
+                       className="flex-1 bg-brand-primary text-white py-2 text-[10px] uppercase font-bold tracking-widest hover:bg-brand-dark transition-colors"
+                     >
+                       Approve Access
+                     </button>
+                     <button 
+                       onClick={() => handleUpdateStatus((u as any).id || u.uid, 'rejected')}
+                       className="flex-1 border border-brand-accent-3 text-brand-accent-3 py-2 text-[10px] uppercase font-bold tracking-widest hover:bg-brand-accent-3 hover:text-white transition-all"
+                     >
+                       Reject
+                     </button>
+                   </div>
                 </motion.div>
               ))}
             </div>
