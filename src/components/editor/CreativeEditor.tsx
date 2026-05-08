@@ -4,7 +4,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../AuthProvider';
 import { Template, ItineraryItem } from '../../types';
 import { handleFirestoreError, OperationType } from '../../lib/errorUtils';
-import { Save, Download, ArrowLeft, Type, Clock, MapPin, Plus, Trash2, Camera, ShieldCheck, User as UserIcon, Car, Building2, Home } from 'lucide-react';
+import { Save, Download, ArrowLeft, Type, Clock, MapPin, Plus, Trash2, Camera, ShieldCheck, User as UserIcon, Car, Building2, Home, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CreativeEditorProps {
@@ -19,6 +19,7 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
   const [name, setName] = useState('Suraj Pinge');
   const [designation, setDesignation] = useState('Vice President | Goa');
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([
     { id: '1', time: '1:45 PM', location: 'Meeting Point', activity: 'Pick-up from your location' },
     { id: '2', time: '3:30 PM', location: 'La Marcella', activity: 'Visit to our luxury estate' },
@@ -194,6 +195,22 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
               </div>
             </div>
 
+            {/* Date Group */}
+            <div className="space-y-4 pt-4 border-t border-neutral-grey/50">
+              <label className="text-[10px] uppercase font-black text-neutral-black/30 tracking-widest flex items-center gap-2">
+                <div className="h-4 w-4 bg-brand-primary/10 rounded flex items-center justify-center text-brand-primary">
+                  <Calendar size={10} />
+                </div>
+                Schedule Date
+              </label>
+              <input 
+                type="date" 
+                value={selectedDate}
+                onChange={e => setSelectedDate(e.target.value)}
+                className="w-full bg-neutral-grey border-b-2 border-transparent focus:border-brand-primary p-3 text-sm outline-none transition-all font-bold text-neutral-black uppercase tracking-wider"
+              />
+            </div>
+
             {/* Timeline Group */}
             <div className="space-y-4 pt-4 border-t border-neutral-grey/50">
               <div className="flex items-center justify-between">
@@ -319,123 +336,119 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
           className="relative aspect-[9/16] w-full max-w-[500px] mx-auto shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden group border-8 border-white" 
           ref={editorRef}
         >
-          {/* Main Template Background (Provided Image) */}
+          {/* Main Template Background - Using the exact provided background image */}
           <div className="absolute inset-0 z-0">
             <img 
               src="https://firebasestorage.googleapis.com/v0/b/firejet-97104.appspot.com/o/image-1715152031174.png?alt=media&token=c4a6a7c3-3b4c-4c7b-b8a3-2c1f9b3f3b1a" 
-              className="w-full h-full object-cover" 
-              alt="Background" 
+              className="w-full h-full object-cover select-none pointer-events-none" 
+              alt="Vianaar Template Background" 
               referrerPolicy="no-referrer" 
             />
           </div>
 
           {/* Content Layer */}
-          <div className="relative z-10 h-full w-full flex flex-col p-8">
-            {/* Header Area */}
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-0.5">
-                   <div className="h-0.5 w-8 bg-neutral-black"></div>
-                   <div className="h-0.5 w-6 bg-neutral-black/70"></div>
-                   <div className="h-0.5 w-8 bg-neutral-black"></div>
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-serif text-2xl font-bold tracking-tighter leading-none text-neutral-black">V</span>
-                  <span className="text-[7px] uppercase tracking-[0.4em] font-black text-neutral-black/60 font-sans">VIANAAR</span>
-                </div>
+          <div className="relative z-10 h-full w-full flex flex-col pt-10 px-10">
+            
+            {/* Header Branding Area - Outside the arch width */}
+            <div className="flex justify-between items-center mb-10 px-2">
+              <div className="h-10">
+                <img 
+                  src="https://firebasestorage.googleapis.com/v0/b/firejet-97104.appspot.com/o/image-1715153368297.png?alt=media&token=7c1b5042-88d4-4286-90c7-e31a166fc73c" 
+                  className="h-full object-contain invert" // Inverting because the logo is white-on-black and template has dark green background in corners
+                  alt="Vianaar" 
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <div className="text-right">
-                <p className="text-[9px] text-neutral-black/40 font-bold uppercase tracking-[0.2em] font-sans">The Goa Edit</p>
+                <p className="font-sans font-bold text-white text-[12px] uppercase tracking-[0.2em]">
+                  THE GOA EDIT
+                </p>
               </div>
             </div>
 
-            {/* Aligning with the Arch in the Background Image */}
-            <div className="mt-12 flex-1 flex flex-col">
-              <div className="px-6 py-4 flex-1 flex flex-col">
-                <div className="text-center mb-8">
-                   <h1 className="text-3xl font-serif font-bold text-brand-dark italic mb-1 uppercase tracking-tight">Site Visit Guide</h1>
-                   <p className="text-[10px] text-brand-dark/50 font-bold uppercase tracking-[0.3em] font-sans">
-                     {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-                   </p>
-                </div>
+            {/* Segment 1: Title & Selected Date (Centered within the arch) */}
+            <div className="mt-6 text-center">
+               <h1 className="text-4xl font-serif font-bold text-brand-dark italic mb-1 uppercase tracking-tight">Site Visit Guide</h1>
+               <p className="text-[12px] text-brand-dark/40 font-bold uppercase tracking-[0.3em] font-sans">
+                 {new Date(selectedDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+               </p>
+            </div>
 
-                {/* Profile Section */}
-                <div className="flex items-center gap-6 mb-10 pb-8 border-b border-brand-dark/5">
-                   <div className="w-24 h-24 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white/50 flex-shrink-0 relative">
-                     {profileImage ? (
-                       <img src={profileImage} className="w-full h-full object-cover" alt="Profile" />
-                     ) : (
-                       <UserIcon className="w-full h-full p-5 text-brand-primary opacity-30" />
-                     )}
-                   </div>
-                   <div className="space-y-1">
-                     <h2 className="text-2xl font-serif font-bold text-brand-dark tracking-tight leading-tight">
-                       {name || 'Full Name'}
-                     </h2>
-                     <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-brand-primary font-sans">
-                       {designation || 'Position Placeholder'}
-                     </p>
-                     <p className="text-[9px] text-brand-dark/60 font-medium leading-tight max-w-[180px] mt-2 font-sans italic">
-                       Professional consultant specializing in luxury residential assets across Goa.
-                     </p>
-                   </div>
-                </div>
-
-                {/* Itinerary Section */}
-                <div className="flex-1">
-                  <div className="flex items-center gap-4 mb-4">
-                    <h3 className="text-xl font-serif font-bold text-brand-dark italic">Itinerary</h3>
-                    <div className="h-px flex-1 bg-brand-dark/10"></div>
-                    <span className="text-[8px] uppercase font-bold text-brand-dark/40 italic font-sans">{calculateDuration()}</span>
+            {/* Segment 2: Profile Section */}
+            <div className="mt-12 px-6">
+               <div className="flex items-center gap-6">
+                  <div className="w-24 h-24 rounded-full border-4 border-white shadow-xl overflow-hidden bg-white/50 flex-shrink-0 relative">
+                    {profileImage ? (
+                      <img src={profileImage} className="w-full h-full object-cover" alt="Profile" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-brand-primary/10">
+                        <UserIcon size={24} className="text-brand-primary opacity-30" />
+                      </div>
+                    )}
                   </div>
+                  <div className="space-y-1">
+                    <h2 className="text-2xl font-serif font-bold text-brand-dark tracking-tight leading-tight">
+                      {name || 'Suraj Pinge'}
+                    </h2>
+                    <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-brand-primary font-sans">
+                      {designation || 'Vice President | Goa'}
+                    </p>
+                  </div>
+               </div>
+            </div>
 
-                  <div className="space-y-6">
-                    {itinerary.map((item, i) => {
-                      const content = (item.activity + ' ' + item.location).toLowerCase();
-                      let Icon = MapPin;
-                      if (content.match(/pick[- ]?up|car|cab|drive|transfer/)) Icon = Car;
-                      else if (content.match(/visit|estate|property|site|building|la /)) Icon = Building2;
-                      else if (content.match(/meeting|talk|discuss|presentation/)) Icon = UserIcon;
-                      else if (content.match(/drop[- ]?off|finish|end|home/)) Icon = MapPin;
-                      else Icon = Home;
+            {/* Segment 3: Itinerary */}
+            <div className="mt-14 px-6 flex-1">
+              <div className="flex items-center gap-4 mb-6">
+                <h3 className="text-2xl font-serif font-bold text-brand-dark italic">Itinerary</h3>
+                <div className="h-[1px] flex-1 bg-brand-dark/10"></div>
+                <span className="text-[10px] font-bold text-brand-dark/40 italic font-sans">{calculateDuration()}</span>
+              </div>
 
-                      return (
-                        <div key={item.id} className="flex gap-3 items-start">
-                          <div className="p-1.5 bg-white rounded shadow-sm">
-                             <Icon size={14} className="text-brand-primary" />
-                          </div>
-                          <div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-[10px] font-bold text-brand-dark uppercase tracking-wide font-sans">{item.time}</span>
-                              <span className="text-[10px] font-bold text-brand-dark font-serif italic">{item.location}</span>
-                            </div>
-                            <p className="text-[9px] text-brand-dark/50 font-medium leading-none mt-0.5 font-sans">
-                              {item.activity}
-                            </p>
-                          </div>
+              <div className="space-y-6 relative">
+                {/* Timeline vertical bar */}
+                <div className="absolute left-[17px] top-4 bottom-4 w-0.5 border-l-2 border-brand-primary/20 border-dotted"></div>
+                
+                {itinerary.map((item) => {
+                  const content = (item.activity + ' ' + item.location).toLowerCase();
+                  let Icon = Building2;
+                  if (content.match(/pick[- ]?up|car|cab|drive|transfer|travel/)) Icon = Car;
+                  else if (content.match(/visit|estate|property|site|building|la /)) Icon = Building2;
+                  else if (content.match(/meeting|talk|discuss|presentation/)) Icon = UserIcon;
+                  else if (content.match(/drop[- ]?off|finish|end|home/)) Icon = MapPin;
+                  
+                  return (
+                    <div key={item.id} className="flex gap-4 items-start relative z-10">
+                      <div className="w-[34px] h-[34px] rounded-full bg-white shadow-md flex items-center justify-center flex-shrink-0 border border-brand-primary/5">
+                         <Icon size={14} className="text-brand-primary" />
+                      </div>
+                      <div className="pt-0.5">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-[11px] font-bold text-brand-dark uppercase tracking-wide font-sans">{item.time}</span>
+                          <span className="text-[11px] font-bold text-brand-dark font-serif italic">— {item.location}</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Footer Message */}
-                <div className="mt-auto pt-6 text-center">
-                  <p className="text-[9px] font-serif font-bold italic text-brand-dark opacity-60">
-                    True luxury is when everything is taken care of.
-                  </p>
-                </div>
+                        <p className="text-[10px] text-brand-dark/50 font-medium leading-tight mt-1 font-sans">
+                          {item.activity}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Bottom Branding */}
-            <div className="mt-auto flex justify-center items-center py-2">
-               <span className="text-[8px] font-serif font-bold italic text-neutral-black/40">
-                 True luxury is when everything is taken care of, so you only have to arrive.
-               </span>
+            {/* Segment 4: Footer Messaging */}
+            <div className="mt-auto mb-10 text-center px-6">
+               <div className="h-[1px] w-12 bg-brand-dark/10 mx-auto mb-4"></div>
+               <p className="text-[11px] font-serif font-bold italic text-brand-dark opacity-60 leading-tight">
+                 True luxury is when everything is taken care of,<br />
+                 so you only have to arrive.
+               </p>
             </div>
+
           </div>
         </div>
+
         
         <div className="bg-neutral-grey/30 border-l-4 border-neutral-sand p-4">
            <p className="text-[10px] text-neutral-black/50 leading-relaxed font-medium">
