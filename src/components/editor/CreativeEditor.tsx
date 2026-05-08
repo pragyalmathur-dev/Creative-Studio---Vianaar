@@ -144,29 +144,44 @@ export default function CreativeEditor({ template, onBack, initialData, autoDown
     
     try {
       // Small delay to ensure any pending renders are complete
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      const dataUrl = await toPng(editorRef.current, {
+      const options = {
         cacheBust: true,
         quality: 1,
-        pixelRatio: 3, // Very high resolution for printing/sharing
+        // We set fixed width/height to ensure 1080x1920 output
+        width: 1080,
+        height: 1920,
         style: {
           transform: 'scale(1)',
-          transformOrigin: 'top left'
+          transformOrigin: 'top left',
+          width: '1080px',
+          height: '1920px',
         }
-      });
+      };
+
+      // Generate PNG
+      const dataUrl = await toPng(editorRef.current, options);
       
+      // Verification of image generation
+      if (!dataUrl || dataUrl.length < 100) {
+        throw new Error('Generated image is empty');
+      }
+
       const link = document.createElement('a');
       const fileName = `Vianaar-${name.replace(/\s+/g, '-')}-${selectedDate}.png`;
       link.download = fileName;
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       console.error('Download failed', err);
-      alert('Failed to generate high-res image. Please try again or contact support.');
+      // Fallback for Safari/Mobile or CORS issues
+      alert('The high-res export encountered a render delay. Please try clicking download again in a moment. Ensure the "Capture Ready" icon is visible.');
     } finally {
       setExporting(false);
     }

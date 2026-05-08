@@ -19,6 +19,7 @@ export default function AdminDashboard({ onSelectTemplate }: AdminDashboardProps
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showUserForm, setShowUserForm] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [newTemplate, setNewTemplate] = useState({
     name: '',
     imageUrl: '',
@@ -78,13 +79,51 @@ export default function AdminDashboard({ onSelectTemplate }: AdminDashboardProps
     }
   };
 
-  const toggleUserAssignment = (uid: string) => {
-    setNewTemplate(prev => {
-      const assigned = prev.assignedTo.includes(uid) 
-        ? prev.assignedTo.filter(id => id !== uid)
-        : [...prev.assignedTo, uid];
-      return { ...prev, assignedTo: assigned };
-    });
+  const handleUpdateTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTemplate) return;
+    try {
+      if (!editingTemplate.name || !editingTemplate.imageUrl) return;
+      await setDoc(doc(db, 'templates', editingTemplate.id), {
+        ...editingTemplate,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      setEditingTemplate(null);
+      // Re-fetch
+      const snap = await getDocs(collection(db, 'templates'));
+      setTemplates(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Template)));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `templates/${editingTemplate.id}`);
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (!window.confirm("Are you sure you want to delete this template? All associated data will be removed.")) return;
+    try {
+      await deleteDoc(doc(db, 'templates', templateId));
+      setTemplates(prev => prev.filter(t => t.id !== templateId));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, `templates/${templateId}`);
+    }
+  };
+
+  const toggleUserAssignment = (uid: string, isEditing: boolean = false) => {
+    if (isEditing && editingTemplate) {
+      setEditingTemplate(prev => {
+        if (!prev) return prev;
+        const assigned = prev.assignedTo.includes(uid) 
+          ? prev.assignedTo.filter(id => id !== uid)
+          : [...prev.assignedTo, uid];
+        return { ...prev, assignedTo: assigned };
+      });
+    } else {
+      setNewTemplate(prev => {
+        const assigned = prev.assignedTo.includes(uid) 
+          ? prev.assignedTo.filter(id => id !== uid)
+          : [...prev.assignedTo, uid];
+        return { ...prev, assignedTo: assigned };
+      });
+    }
   };
 
   const [activeTab, setActiveTab] = useState<'templates' | 'users' | 'audit' | 'approvals'>('templates');
@@ -192,6 +231,18 @@ export default function AdminDashboard({ onSelectTemplate }: AdminDashboardProps
 
   return (
     <div className="space-y-12">
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-4xl font-serif font-bold text-brand-dark italic mb-2">Vianaar Terminal</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-primary bg-brand-primary/10 px-4 py-2 rounded-full border border-brand-primary/20 flex items-center gap-2">
+            <ShieldCheck size={14} />
+            {isSuperAdmin ? 'Super Admin Verified Access' : 'Administrative Access'}
+          </span>
+        </div>
+      </div>
+
       {/* Header Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {[
@@ -199,7 +250,7 @@ export default function AdminDashboard({ onSelectTemplate }: AdminDashboardProps
           { label: 'Total Members', value: users.length, icon: Users, color: 'text-brand-accent-2' },
           { label: 'Total Edits Logged', value: history.length, icon: History, color: 'text-brand-accent-1' },
         ].map((stat, i) => (
-          <div key={i} className="bg-white border border-neutral-sand p-6 flex flex-col gap-2 shadow-sm">
+          <div key={i} className="relative bg-white border border-neutral-sand p-6 flex flex-col gap-2 shadow-sm">
             <stat.icon className={`${stat.color} mb-2`} size={24} />
             <span className="text-4xl font-serif font-bold text-neutral-black">{stat.value}</span>
             <span className="text-xs uppercase tracking-widest font-bold text-neutral-black/40">{stat.label}</span>
@@ -267,9 +318,9 @@ export default function AdminDashboard({ onSelectTemplate }: AdminDashboardProps
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              const limit = isSuperAdmin ? 1024 * 1024 : 512 * 1024;
+                              const limit = profile?.role === 'super_admin' ? 1024 * 1024 : 512 * 1024;
                               if (file.size > limit) {
-                                alert(`File too large. ${isSuperAdmin ? 'Super Admin' : 'Admin'} limit is ${isSuperAdmin ? '1MB' : '500KB'}.`);
+                                alert(`File too large. ${profile?.role === 'super_admin' ? 'Super Admin' : 'Admin'} limit is ${profile?.role === 'super_admin' ? '1MB' : '500KB'}.`);
                                 return;
                               }
                               const reader = new FileReader();
@@ -304,9 +355,6 @@ export default function AdminDashboard({ onSelectTemplate }: AdminDashboardProps
                           )}
                         </div>
                       </div>
-                      {newTemplate.imageUrl && newTemplate.imageUrl.length > 800000 && (
-                        <p className="text-[10px] text-brand-accent-3 font-bold italic">Warning: This file is large and may impact performance.</p>
-                      )}
                     </div>
                     
                     <div className="space-y-2">
@@ -317,15 +365,7 @@ export default function AdminDashboard({ onSelectTemplate }: AdminDashboardProps
                             <input 
                               type="checkbox"
                               checked={newTemplate.assignedTo.includes(u.uid || u.email)}
-                              onChange={() => {
-                                const id = u.uid || u.email;
-                                setNewTemplate(prev => ({
-                                  ...prev,
-                                  assignedTo: prev.assignedTo.includes(id) 
-                                    ? prev.assignedTo.filter(val => val !== id)
-                                    : [...prev.assignedTo, id]
-                                }));
-                              }}
+                              onChange={() => toggleUserAssignment(u.uid || u.email)}
                               className="accent-brand-primary"
                             />
                             <div className="flex flex-col">
@@ -364,9 +404,105 @@ export default function AdminDashboard({ onSelectTemplate }: AdminDashboardProps
                 </motion.form>
               )}
 
+              {editingTemplate && (
+                <motion.form 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  onSubmit={handleUpdateTemplate}
+                  className="bg-brand-light/10 border border-brand-primary p-6 space-y-4 shadow-xl"
+                >
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-brand-primary">Edit Template</h3>
+                  <div className="space-y-4">
+                    <input 
+                      type="text" 
+                      placeholder="Template Name" 
+                      className="w-full border-b border-neutral-sand py-2 text-sm focus:border-brand-primary outline-none"
+                      value={editingTemplate.name}
+                      onChange={e => setEditingTemplate({...editingTemplate, name: e.target.value})}
+                      required
+                    />
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-neutral-black/40">Replace/Update Layout File</label>
+                      <div className="relative border-2 border-dashed border-brand-primary/20 hover:border-brand-primary p-4 transition-colors group">
+                        <input 
+                          type="file" 
+                          accept="image/*,application/pdf"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const limit = isSuperAdmin ? 1024 * 1024 : 512 * 1024;
+                              if (file.size > limit) {
+                                alert(`File too large. ${isSuperAdmin ? 'Super Admin' : 'Admin'} limit is ${isSuperAdmin ? '1MB' : '500KB'}.`);
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                const result = event.target?.result as string;
+                                setEditingTemplate({...editingTemplate, imageUrl: result});
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <CheckCircle2 className="text-brand-primary" size={20} />
+                          <span className="text-[10px] font-bold text-brand-primary">Click to Replace Current File</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <p className="text-[10px] uppercase font-bold text-neutral-black/40">Update Assignments</p>
+                      <div className="max-h-40 overflow-y-auto border border-neutral-grey p-2 space-y-1">
+                        {users.filter(u => u.role === 'sales').map(u => (
+                          <label key={u.email} className="flex items-center gap-2 text-xs p-1 hover:bg-neutral-grey rounded cursor-pointer">
+                            <input 
+                              type="checkbox"
+                              checked={editingTemplate.assignedTo.includes(u.uid || u.email)}
+                              onChange={() => toggleUserAssignment(u.uid || u.email, true)}
+                              className="accent-brand-primary"
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-semibold">{u.displayName}</span>
+                              <span className="text-[10px] text-neutral-black/40">{u.email}</span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      {Object.keys(editingTemplate.editableFields).map(field => (
+                        <label key={field} className="flex items-center gap-2 text-xs capitalize font-semibold">
+                          <input 
+                            type="checkbox"
+                            checked={editingTemplate.editableFields[field as keyof typeof editingTemplate.editableFields]}
+                            onChange={e => setEditingTemplate({
+                              ...editingTemplate, 
+                              editableFields: {
+                                ...editingTemplate.editableFields,
+                                [field]: e.target.checked
+                              }
+                            })}
+                            className="accent-brand-primary"
+                          />
+                          {field}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button type="submit" className="flex-1 bg-brand-primary text-white py-2 font-bold text-xs uppercase tracking-widest hover:bg-brand-dark transition-colors">Save Changes</button>
+                    <button type="button" onClick={() => setEditingTemplate(null)} className="px-4 border border-neutral-sand text-xs uppercase font-bold hover:bg-neutral-grey">Cancel</button>
+                  </div>
+                </motion.form>
+              )}
+
               <div className="space-y-4">
                 {templates.map(t => (
-                  <div key={t.id} className="flex items-center gap-4 bg-white border border-neutral-sand p-3 hover:border-brand-primary transition-colors cursor-default">
+                  <div key={t.id} className="group relative flex items-center gap-4 bg-white border border-neutral-sand p-3 hover:border-brand-primary transition-colors cursor-default">
                     <div className="w-16 h-16 bg-neutral-grey overflow-hidden flex-shrink-0">
                       <img src={t.imageUrl} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                     </div>
@@ -374,6 +510,24 @@ export default function AdminDashboard({ onSelectTemplate }: AdminDashboardProps
                       <h4 className="font-serif font-bold text-neutral-black truncate">{t.name}</h4>
                       <p className="text-[10px] text-neutral-black/40 uppercase tracking-wider">{t.assignedTo.length} members assigned</p>
                     </div>
+                    {(isSuperAdmin || t.createdBy === user?.uid) && (
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => { setEditingTemplate(t); setShowAddForm(false); }}
+                          className="p-1.5 text-neutral-black/40 hover:text-brand-primary transition-colors"
+                          title="Edit Template"
+                        >
+                          <History size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteTemplate(t.id)}
+                          className="p-1.5 text-neutral-black/40 hover:text-brand-accent-3 transition-colors"
+                          title="Delete Template"
+                        >
+                          <Plus size={16} className="rotate-45" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -458,13 +612,15 @@ export default function AdminDashboard({ onSelectTemplate }: AdminDashboardProps
                   transition={{ delay: i * 0.05 }}
                   className="bg-white border border-neutral-sand p-6 shadow-sm hover:shadow-md transition-shadow relative group"
                 >
-                  <button 
-                    onClick={() => handleDeleteUser((u as any).id || u.uid)}
-                    className="absolute top-4 right-4 p-2 text-neutral-black/20 hover:text-brand-accent-3 opacity-0 group-hover:opacity-100 transition-all"
-                    title="Remove Access"
-                  >
-                    <Plus size={18} className="rotate-45" />
-                  </button>
+                    {isSuperAdmin && u.uid !== user?.uid && (
+                      <button 
+                        onClick={() => handleDeleteUser((u as any).id || u.uid)}
+                        className="absolute top-4 right-4 p-2 text-neutral-black/20 hover:text-brand-accent-3 opacity-0 group-hover:opacity-100 transition-all"
+                        title="Remove Access"
+                      >
+                        <Plus size={18} className="rotate-45" />
+                      </button>
+                    )}
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[9px] uppercase tracking-tighter text-brand-primary font-black px-1.5 py-0.5 bg-brand-light/20 rounded">
