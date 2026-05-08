@@ -3,6 +3,7 @@ import { db } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../AuthProvider';
 import { Template, ItineraryItem } from '../../types';
+import { VianaarLogo } from '../VianaarLogo';
 import { handleFirestoreError, OperationType } from '../../lib/errorUtils';
 import { Save, Download, ArrowLeft, Type, Clock, MapPin, Plus, Trash2, Camera, ShieldCheck, User as UserIcon, Car, Building2, Home, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -394,19 +395,7 @@ export default function CreativeEditor({ template, onBack, initialData, autoDown
 
           {/* Section 2: Top Bar Branding */}
           <div className="absolute top-[4%] left-0 right-0 flex justify-between items-center z-30 px-10">
-            <div className="brand flex items-center">
-              <img 
-                src="https://firebasestorage.googleapis.com/v0/b/firejet-97104.appspot.com/o/image-1715155986953.png?alt=media&token=8e92f5d2-1c5c-4469-8aa5-a9f4e2c8d8b6" 
-                alt="Vianaar Logo"
-                className="brand-logo w-[180px] h-auto object-contain block opacity-100"
-                style={{ filter: 'brightness(0) invert(1)' }} // Force white if it's black
-                onError={(e) => {
-                  e.currentTarget.src = "https://www.vianaar.com/assets/images/logo-white.png";
-                  e.currentTarget.onerror = null;
-                }}
-                referrerPolicy="no-referrer"
-              />
-            </div>
+            <VianaarLogo className="scale-75 origin-left" />
             <div className="text-white font-sans text-[10px] tracking-widest font-bold opacity-90 uppercase">
               THE GOA EDIT
             </div>
