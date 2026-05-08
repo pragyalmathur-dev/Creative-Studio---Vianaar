@@ -393,24 +393,29 @@ export default function CreativeEditor({ template, onBack, initialData, autoDown
           </div>
 
           {/* Section 2: Top Bar Branding */}
-          <div className="absolute top-[3.5%] left-[6%] right-[6%] flex justify-between items-center z-20">
-            <div className="flex items-center gap-3 text-white font-sans font-bold tracking-wider text-[12px]">
-              <div className="flex h-6 w-5 relative">
-                <span className="absolute w-[2px] h-full bg-white rounded-full left-0 origin-top skew-x-[18deg]"></span>
-                <span className="absolute w-[2px] h-full bg-white rounded-full left-[4px] origin-top skew-x-[12deg]"></span>
-                <span className="absolute w-[2px] h-full bg-white rounded-full left-[8px] origin-top"></span>
-                <span className="absolute w-[2px] h-full bg-white rounded-full left-[12px] origin-top -skew-x-[12deg]"></span>
-                <span className="absolute w-[2px] h-full bg-white rounded-full left-[16px] origin-top -skew-x-[18deg]"></span>
+          <div className="absolute top-[3%] left-0 right-0 flex justify-center items-center z-20 px-8">
+            <div className="w-full flex justify-between items-center">
+              <div className="brand flex items-center">
+                <img 
+                  src="/assets/vianaar-logo.png" 
+                  alt="Vianaar Logo"
+                  className="brand-logo w-[210px] h-auto object-contain"
+                  onError={(e) => {
+                    // Fallback to Firebase URL if local file is not found
+                    e.currentTarget.src = "https://firebasestorage.googleapis.com/v0/b/firejet-97104.appspot.com/o/image-1715155986953.png?alt=media&token=8e92f5d2-1c5c-4469-8aa5-a9f4e2c8d8b6"
+                  }}
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
+                />
               </div>
-              VIANAAR
-            </div>
-            <div className="text-white font-sans text-[10px] tracking-wide">
-              THE GOA EDIT
+              <div className="text-white font-sans text-[10px] tracking-widest font-bold opacity-80 uppercase">
+                THE GOA EDIT
+              </div>
             </div>
           </div>
 
           {/* Section 3: The Cream Card (The .card class) */}
-          <div className="absolute top-[10%] left-[11%] right-[11%] bottom-[6%] bg-[#f5f2ea] rounded-t-[200px] z-10 flex flex-col overflow-hidden shadow-2xl">
+          <div className="absolute top-[10%] left-[10%] right-[10%] bottom-[6%] bg-[#f5f2ea] rounded-t-[200px] z-10 flex flex-col overflow-hidden shadow-2xl">
             
             {/* Segment 1: Header/Title (18% height approx) */}
             <div className="h-[18%] border-b-2 border-[#ddd6ca] flex flex-col justify-center items-center text-center px-4 pt-4">
@@ -443,22 +448,22 @@ export default function CreativeEditor({ template, onBack, initialData, autoDown
                   <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-[#21553f]/60 font-sans">
                     {designation || 'Vice President | Goa'}
                   </p>
-                  <p className="text-[9px] text-[#21553f]/50 font-medium leading-relaxed max-w-[220px] mt-1.5 font-sans italic line-clamp-2">
+                  <p className="text-[9px] text-[#21553f]/50 font-medium leading-relaxed max-w-[220px] mt-1.5 font-sans italic line-clamp-2 text-center">
                     {bio}
                   </p>
                </div>
             </div>
 
             {/* Segment 3: Itinerary (32% height approx) */}
-            <div className="h-[32%] border-b-2 border-[#ddd6ca] px-8 flex flex-col justify-center">
+            <div className="h-[32%] border-b-2 border-[#ddd6ca] px-12 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-3">
-                  <h3 className="text-xl font-serif font-bold text-[#21553f] italic">Itinerary</h3>
+                  <h3 className="text-xl font-serif font-bold text-[#21553f] italic font-serif">Itinerary</h3>
                   <div className="h-[1px] flex-1 bg-[#21553f]/10"></div>
                   <span className="text-[9px] font-bold text-[#21553f]/40 italic font-sans">{calculateDuration()}</span>
                 </div>
 
-                <div className="space-y-2.5 relative">
-                  <div className="absolute left-[13px] top-3 bottom-3 w-0.5 border-l-2 border-[#21553f]/10 border-dotted"></div>
+                <div className="space-y-3 relative">
+                  <div className="absolute left-[13px] top-3 bottom-3 w-0.5 border-l-2 border-[#21553f]/15 border-dotted"></div>
                   
                   {itinerary.slice(0, 4).map((item) => {
                     const content = (item.activity + ' ' + item.location).toLowerCase();
@@ -469,16 +474,16 @@ export default function CreativeEditor({ template, onBack, initialData, autoDown
                     else if (content.match(/drop[- ]?off|finish|end|home/)) Icon = MapPin;
                     
                     return (
-                      <div key={item.id} className="flex gap-3 items-start relative z-10">
-                        <div className="w-[28px] h-[28px] rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0 border border-[#21553f]/5">
+                      <div key={item.id} className="flex gap-4 items-center relative z-10">
+                        <div className="w-[28px] h-[28px] rounded-full bg-white shadow-md flex items-center justify-center flex-shrink-0 border border-[#21553f]/10">
                            <Icon size={12} className="text-[#21553f]" />
                         </div>
-                        <div className="pt-0.5 max-w-[80%]">
-                          <div className="flex items-baseline gap-2">
+                        <div className="flex-1 text-left">
+                          <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-[#21553f] uppercase tracking-wide font-sans">{item.time}</span>
-                            <span className="text-[10px] font-bold text-[#21553f] font-serif italic">— {item.location}</span>
+                            <span className="text-[10px] font-bold text-[#21553f] font-serif italic truncate">— {item.location}</span>
                           </div>
-                          <p className="text-[9px] text-[#21553f]/50 font-medium leading-tight font-sans line-clamp-1">
+                          <p className="text-[9px] text-[#21553f]/40 font-medium leading-none font-sans mt-0.5">
                             {item.activity}
                           </p>
                         </div>

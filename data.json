@@ -1,0 +1,38 @@
+{
+  "profile": {
+    "name": "Suraj Pinge",
+    "designation": "Vice President | Goa",
+    "bio": ""
+  },
+  "itinerary": [
+    {
+      "id": "1",
+      "time": "1:45 PM",
+      "activity": "Pick-up from your location",
+      "location": "Meeting Point"
+    },
+    {
+      "id": "2",
+      "time": "3:30 PM",
+      "activity": "Visit to our luxury estate",
+      "location": "La Marcella"
+    },
+    {
+      "id": "3",
+      "time": "4:30 PM",
+      "activity": "Visit to completed property",
+      "location": "La Selva"
+    },
+    {
+      "id": "4",
+      "time": "7:30 PM",
+      "activity": "Drop-off at your location",
+      "location": "Final Stop"
+    }
+  ],
+  "branding": {
+    "company": "VIANAAR",
+    "edition": "THE GOA EDIT",
+    "footer": "True luxury is when everything is taken care of, so you only have to arrive."
+  }
+}
