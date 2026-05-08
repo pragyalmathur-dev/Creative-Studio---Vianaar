@@ -116,6 +116,9 @@ export default function CreativeEditor({ template, onBack, initialData, autoDown
         contentSnapshot: {
           name,
           designation,
+          bio,
+          profileImage,
+          selectedDate,
           itinerary
         }
       });
@@ -379,73 +382,83 @@ export default function CreativeEditor({ template, onBack, initialData, autoDown
         </div>
 
         <div 
-          className="relative aspect-[9/16] w-full max-w-[500px] mx-auto shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden group border-8 border-white" 
+          className="relative aspect-[9/16] w-full max-w-[500px] mx-auto shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden group border-8 border-white select-none" 
           ref={editorRef}
         >
-          {/* Main Template Background Area */}
-          <div className="absolute inset-0 z-0">
-            <img 
-              src="https://firebasestorage.googleapis.com/v0/b/firejet-97104.appspot.com/o/image-1715153713028.png?alt=media&token=c193f773-1f15-46f9-8668-3e5f4d89615a" 
-              className="w-full h-full object-cover select-none pointer-events-none" 
-              alt="Vianaar Template Background"
-              crossOrigin="anonymous"
-            />
+          {/* Section 1: Main Poster Background (The .poster class) */}
+          <div className="absolute inset-0 z-0 bg-[#1f4d36] bg-gradient-to-br from-[#5f874d] to-[#1f4d36]">
+             {/* Texture Overlay (Shadows & Lights) */}
+             <div className="absolute inset-0 opacity-40 mix-blend-multiply bg-[radial-gradient(circle_at_20%_20%,rgba(0,0,0,0.18)_0%,transparent_25%),radial-gradient(circle_at_80%_30%,rgba(0,0,0,0.15)_0%,transparent_30%),radial-gradient(circle_at_60%_70%,rgba(0,0,0,0.12)_0%,transparent_30%)]"></div>
+             <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.12)_0%,transparent_20%),radial-gradient(circle_at_70%_25%,rgba(255,255,255,0.08)_0%,transparent_25%),radial-gradient(circle_at_30%_60%,rgba(255,255,255,0.08)_0%,transparent_20%)]"></div>
           </div>
 
-          {/* Content Layer - Precisely positioned to overlay the arch in the image */}
-          <div className="relative z-10 h-full w-full flex flex-col pt-[110px] px-12">
+          {/* Section 2: Top Bar Branding */}
+          <div className="absolute top-[3.5%] left-[6%] right-[6%] flex justify-between items-center z-20">
+            <div className="flex items-center gap-3 text-white font-sans font-bold tracking-wider text-[12px]">
+              <div className="flex h-6 w-5 relative">
+                <span className="absolute w-[2px] h-full bg-white rounded-full left-0 origin-top skew-x-[18deg]"></span>
+                <span className="absolute w-[2px] h-full bg-white rounded-full left-[4px] origin-top skew-x-[12deg]"></span>
+                <span className="absolute w-[2px] h-full bg-white rounded-full left-[8px] origin-top"></span>
+                <span className="absolute w-[2px] h-full bg-white rounded-full left-[12px] origin-top -skew-x-[12deg]"></span>
+                <span className="absolute w-[2px] h-full bg-white rounded-full left-[16px] origin-top -skew-x-[18deg]"></span>
+              </div>
+              VIANAAR
+            </div>
+            <div className="text-white font-sans text-[10px] tracking-wide">
+              THE GOA EDIT
+            </div>
+          </div>
+
+          {/* Section 3: The Cream Card (The .card class) */}
+          <div className="absolute top-[10%] left-[11%] right-[11%] bottom-[6%] bg-[#f5f2ea] rounded-t-[200px] z-10 flex flex-col overflow-hidden shadow-2xl">
             
-            {/* Main Arch Content Area */}
-            <div className="flex-1 flex flex-col">
-              {/* Segment 1: Title & Date */}
-              <div className="text-center mb-10 h-[100px] flex flex-col justify-center">
-                 <h1 className="text-3xl font-serif font-bold text-brand-dark italic mb-1 uppercase tracking-tight">Site Visit Guide</h1>
-                 <p className="text-[11px] text-brand-dark/40 font-bold uppercase tracking-[0.3em] font-sans">
-                   {new Date(selectedDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-                 </p>
-              </div>
+            {/* Segment 1: Header/Title (18% height approx) */}
+            <div className="h-[18%] border-b-2 border-[#ddd6ca] flex flex-col justify-center items-center text-center px-4 pt-4">
+               <h1 className="text-2xl font-serif font-bold text-[#21553f] italic mb-1 uppercase tracking-tight">Site Visit Guide</h1>
+               <p className="text-[10px] text-[#21553f]/40 font-bold uppercase tracking-[0.3em] font-sans">
+                 {new Date(selectedDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+               </p>
+            </div>
 
-              {/* Segment 2: Profile Section */}
-              <div className="px-2 mb-10 h-[150px] flex flex-col justify-center">
-                 <div className="flex items-center gap-5">
-                    <div className="w-20 h-20 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white/50 flex-shrink-0 relative">
-                      {profileImage ? (
-                        <img 
-                          src={profileImage} 
-                          className="w-full h-full object-cover" 
-                          alt="Profile" 
-                          crossOrigin="anonymous"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-brand-primary/10">
-                          <UserIcon size={20} className="text-brand-primary opacity-30" />
-                        </div>
-                      )}
+            {/* Segment 2: Profile (30% height approx) */}
+            <div className="h-[30%] border-b-2 border-[#ddd6ca] flex flex-col justify-center items-center px-6 text-center">
+               <div className="w-20 h-20 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white/50 mb-2 relative flex-shrink-0">
+                  {profileImage ? (
+                    <img 
+                      src={profileImage} 
+                      className="w-full h-full object-cover" 
+                      alt="Profile" 
+                      crossOrigin="anonymous"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-[#21553f]/10">
+                      <UserIcon size={24} className="text-[#21553f] opacity-30" />
                     </div>
-                    <div className="space-y-0.5">
-                      <h2 className="text-xl font-serif font-bold text-brand-dark tracking-tight leading-tight">
-                        {name || 'Suraj Pinge'}
-                      </h2>
-                      <p className="text-[9px] uppercase tracking-[0.15em] font-bold text-brand-primary font-sans">
-                        {designation || 'Vice President | Goa'}
-                      </p>
-                      <p className="text-[9px] text-brand-dark/60 font-medium leading-relaxed max-w-[180px] mt-1 font-sans italic line-clamp-2">
-                        {bio}
-                      </p>
-                    </div>
-                 </div>
-              </div>
+                  )}
+               </div>
+               <div className="space-y-0.5">
+                  <h2 className="text-xl font-serif font-bold text-[#21553f] tracking-tight leading-tight">
+                    {name || 'Suraj Pinge'}
+                  </h2>
+                  <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-[#21553f]/60 font-sans">
+                    {designation || 'Vice President | Goa'}
+                  </p>
+                  <p className="text-[9px] text-[#21553f]/50 font-medium leading-relaxed max-w-[220px] mt-1.5 font-sans italic line-clamp-2">
+                    {bio}
+                  </p>
+               </div>
+            </div>
 
-              {/* Segment 3: Itinerary Section */}
-              <div className="px-2 h-[220px]">
-                <div className="flex items-center gap-3 mb-5">
-                  <h3 className="text-xl font-serif font-bold text-brand-dark italic">Itinerary</h3>
-                  <div className="h-[1px] flex-1 bg-brand-dark/10"></div>
-                  <span className="text-[9px] font-bold text-brand-dark/40 italic font-sans">{calculateDuration()}</span>
+            {/* Segment 3: Itinerary (32% height approx) */}
+            <div className="h-[32%] border-b-2 border-[#ddd6ca] px-8 flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-3">
+                  <h3 className="text-xl font-serif font-bold text-[#21553f] italic">Itinerary</h3>
+                  <div className="h-[1px] flex-1 bg-[#21553f]/10"></div>
+                  <span className="text-[9px] font-bold text-[#21553f]/40 italic font-sans">{calculateDuration()}</span>
                 </div>
 
-                <div className="space-y-4 relative">
-                  <div className="absolute left-[15px] top-4 bottom-4 w-0.5 border-l-2 border-brand-primary/20 border-dotted"></div>
+                <div className="space-y-2.5 relative">
+                  <div className="absolute left-[13px] top-3 bottom-3 w-0.5 border-l-2 border-[#21553f]/10 border-dotted"></div>
                   
                   {itinerary.slice(0, 4).map((item) => {
                     const content = (item.activity + ' ' + item.location).toLowerCase();
@@ -457,15 +470,15 @@ export default function CreativeEditor({ template, onBack, initialData, autoDown
                     
                     return (
                       <div key={item.id} className="flex gap-3 items-start relative z-10">
-                        <div className="w-[30px] h-[30px] rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0 border border-brand-primary/5">
-                           <Icon size={12} className="text-brand-primary" />
+                        <div className="w-[28px] h-[28px] rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0 border border-[#21553f]/5">
+                           <Icon size={12} className="text-[#21553f]" />
                         </div>
-                        <div className="pt-0.5">
+                        <div className="pt-0.5 max-w-[80%]">
                           <div className="flex items-baseline gap-2">
-                            <span className="text-[10px] font-bold text-brand-dark uppercase tracking-wide font-sans">{item.time}</span>
-                            <span className="text-[10px] font-bold text-brand-dark font-serif italic">— {item.location}</span>
+                            <span className="text-[10px] font-bold text-[#21553f] uppercase tracking-wide font-sans">{item.time}</span>
+                            <span className="text-[10px] font-bold text-[#21553f] font-serif italic">— {item.location}</span>
                           </div>
-                          <p className="text-[9px] text-brand-dark/50 font-medium leading-tight mt-0.5 font-sans line-clamp-1">
+                          <p className="text-[9px] text-[#21553f]/50 font-medium leading-tight font-sans line-clamp-1">
                             {item.activity}
                           </p>
                         </div>
@@ -473,8 +486,28 @@ export default function CreativeEditor({ template, onBack, initialData, autoDown
                     );
                   })}
                 </div>
-              </div>
             </div>
+
+            {/* Segment 4: Good To Know (Remaining height) */}
+            <div className="p-8 flex-1 flex flex-col justify-center text-[#21553f]">
+                <h2 className="text-xl font-serif font-bold mb-3">Good To Know</h2>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="border-l-2 border-[#21553f] pl-2 text-[9px] leading-tight font-sans text-[#2c6a4f]">
+                    A dedicated pick-up can be arranged from your location of choice in North Goa.
+                  </div>
+                  <div className="border-l-2 border-[#21553f] pl-2 text-[9px] leading-tight font-sans text-[#2c6a4f]">
+                    Easy walking shoes are recommended; the visit includes outdoor walkthroughs.
+                  </div>
+                  <div className="border-l-2 border-[#21553f] pl-2 text-[9px] leading-tight font-sans text-[#2c6a4f]">
+                    Carry relevant documents for your discussion.
+                  </div>
+                </div>
+            </div>
+          </div>
+
+          {/* Section 4: Footer Line */}
+          <div className="absolute bottom-[2%] w-full px-10 text-center text-white italic text-[12px] z-20 opacity-90 drop-shadow-sm font-serif">
+            True luxury is when everything is taken care of, so you only have to arrive.
           </div>
         </div>
 
