@@ -4,7 +4,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../AuthProvider';
 import { Template, ItineraryItem } from '../../types';
 import { handleFirestoreError, OperationType } from '../../lib/errorUtils';
-import { Save, Download, ArrowLeft, Type, Clock, MapPin, Plus, Trash2, Camera, ShieldCheck, User as UserIcon } from 'lucide-react';
+import { Save, Download, ArrowLeft, Type, Clock, MapPin, Plus, Trash2, Camera, ShieldCheck, User as UserIcon, Car, Building2, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CreativeEditorProps {
@@ -16,15 +16,60 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
   const { user, profile } = useAuth();
   const isAdmin = ['admin', 'super_admin'].includes(profile?.role || '');
   
-  const [name, setName] = useState('');
-  const [designation, setDesignation] = useState('');
+  const [name, setName] = useState('Suraj Pinge');
+  const [designation, setDesignation] = useState('Vice President | Goa');
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([
-    { id: '1', time: '1:45 PM', location: 'Meeting Point', activity: 'Pick-up from your location' }
+    { id: '1', time: '1:45 PM', location: 'Meeting Point', activity: 'Pick-up from your location' },
+    { id: '2', time: '3:30 PM', location: 'La Marcella', activity: 'Visit to our luxury estate' },
+    { id: '3', time: '4:30 PM', location: 'La Selva', activity: 'Visit to completed property' },
+    { id: '4', time: '7:30 PM', location: 'Final Stop', activity: 'Drop-off at your location' }
   ]);
   
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
+
+  const calculateDuration = () => {
+    if (itinerary.length < 2) return '0 Hours';
+    
+    try {
+      const parseTime = (timeStr: string) => {
+        const [time, modifier] = timeStr.trim().split(' ');
+        let [hours, minutes] = time.split(':').map(Number);
+        if (modifier?.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+        if (modifier?.toUpperCase() === 'AM' && hours === 12) hours = 0;
+        const d = new Date();
+        d.setHours(hours, minutes || 0, 0, 0);
+        return d.getTime();
+      };
+
+      const start = parseTime(itinerary[0].time);
+      const end = parseTime(itinerary[itinerary.length - 1].time);
+      
+      const diffMs = end - start;
+      if (diffMs < 0) return 'TBD';
+      
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      
+      if (hours === 0) return `${minutes} Minutes`;
+      return `${hours}h ${minutes > 0 ? `${minutes}m` : ''}`;
+    } catch {
+      return 'Calculating...';
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setProfileImage(ev.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const addStop = () => {
     const newItem: ItineraryItem = {
@@ -115,20 +160,37 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
                 Creative Persona
               </label>
               <div className="space-y-3">
-                <input 
-                  type="text" 
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full bg-neutral-grey border-b-2 border-transparent focus:border-brand-primary p-3 text-sm outline-none transition-all placeholder:text-neutral-black/20"
-                  placeholder="Sales Member Name (e.g. Suraj Pinge)"
-                />
-                <input 
-                  type="text" 
-                  value={designation}
-                  onChange={e => setDesignation(e.target.value)}
-                  className="w-full bg-neutral-grey border-b-2 border-transparent focus:border-brand-primary p-3 text-[10px] uppercase tracking-widest font-bold outline-none transition-all placeholder:text-neutral-black/20"
-                  placeholder="Designation (e.g. Vice President | Goa)"
-                />
+                <div className="flex items-center gap-4">
+                  <div className="relative group/img cursor-pointer">
+                    <div className="w-16 h-16 rounded-full bg-neutral-grey border-2 border-brand-primary/20 flex items-center justify-center overflow-hidden">
+                      {profileImage ? (
+                        <img src={profileImage} className="w-full h-full object-cover" alt="Profile" />
+                      ) : (
+                        <UserIcon size={24} className="text-brand-primary/40" />
+                      )}
+                    </div>
+                    <label className="absolute inset-0 flex items-center justify-center bg-brand-primary/60 text-white rounded-full opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer">
+                      <Plus size={16} />
+                      <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                    </label>
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <input 
+                      type="text" 
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      className="w-full bg-neutral-grey border-b-2 border-transparent focus:border-brand-primary p-2 text-sm outline-none transition-all placeholder:text-neutral-black/20"
+                      placeholder="Sales Member Name"
+                    />
+                    <input 
+                      type="text" 
+                      value={designation}
+                      onChange={e => setDesignation(e.target.value)}
+                      className="w-full bg-neutral-grey border-b-2 border-transparent focus:border-brand-primary p-2 text-[10px] uppercase tracking-widest font-bold outline-none transition-all placeholder:text-neutral-black/20"
+                      placeholder="Designation"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -139,7 +201,7 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
                   <div className="h-4 w-4 bg-brand-primary/10 rounded flex items-center justify-center text-brand-primary">
                     <Clock size={10} />
                   </div>
-                  Itinerary Stops
+                  Sequence [Duration: {calculateDuration()}]
                 </label>
                 <button 
                   onClick={addStop}
@@ -254,107 +316,123 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
         </div>
 
         <div 
-          className="relative aspect-[9/16] w-full max-w-[500px] mx-auto bg-neutral-cream shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden group border-8 border-white p-4" 
+          className="relative aspect-[9/16] w-full max-w-[500px] mx-auto shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden group border-8 border-white" 
           ref={editorRef}
         >
-          {/* Base Template Image - Used as an "Atmospheric" Background */}
-          {template.imageUrl && (
+          {/* Main Template Background (Provided Image) */}
+          <div className="absolute inset-0 z-0">
             <img 
-              src={template.imageUrl} 
-              className="absolute inset-0 w-full h-full object-cover select-none opacity-20 blur-sm pointer-events-none scale-110" 
-              alt="" 
+              src="https://firebasestorage.googleapis.com/v0/b/firejet-97104.appspot.com/o/image-1715152031174.png?alt=media&token=c4a6a7c3-3b4c-4c7b-b8a3-2c1f9b3f3b1a" 
+              className="w-full h-full object-cover" 
+              alt="Background" 
               referrerPolicy="no-referrer" 
             />
-          )}
+          </div>
 
-          {/* Vianaar Branded Structure - REPLICATING THE TEMPLATE DESIGN */}
-          <div className="h-full w-full bg-brand-primary relative flex flex-col p-8 overflow-hidden">
-            {/* Visual Textures */}
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')] opacity-30 pointer-events-none"></div>
-            
+          {/* Content Layer */}
+          <div className="relative z-10 h-full w-full flex flex-col p-8">
             {/* Header Area */}
-            <div className="relative z-10 flex justify-between items-start mb-8">
-              <div className="text-white">
-                <span className="block font-serif text-3xl font-black tracking-tighter opacity-90">V</span>
-                <span className="text-[8px] uppercase tracking-[0.5em] font-black opacity-60">VIANAAR</span>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-0.5">
+                   <div className="h-0.5 w-8 bg-neutral-black"></div>
+                   <div className="h-0.5 w-6 bg-neutral-black/70"></div>
+                   <div className="h-0.5 w-8 bg-neutral-black"></div>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-serif text-2xl font-bold tracking-tighter leading-none text-neutral-black">V</span>
+                  <span className="text-[7px] uppercase tracking-[0.4em] font-black text-neutral-black/60 font-sans">VIANAAR</span>
+                </div>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-white/50 font-bold uppercase tracking-[0.2em]">The Goa Edit</p>
+                <p className="text-[9px] text-neutral-black/40 font-bold uppercase tracking-[0.2em] font-sans">The Goa Edit</p>
               </div>
             </div>
 
-            {/* Content Arch */}
-            <div className="flex-1 bg-neutral-cream rounded-t-[100px] relative overflow-hidden flex flex-col p-1">
-              <div className="bg-neutral-cream px-8 py-10 flex-1 flex flex-col">
-                <div className="text-center mb-10">
-                   <h1 className="text-4xl font-serif font-black text-brand-dark italic mb-1 uppercase tracking-tight">Site Visit Guide</h1>
-                   <p className="text-[12px] text-brand-dark/50 font-bold uppercase tracking-[0.3em]">
+            {/* Aligning with the Arch in the Background Image */}
+            <div className="mt-12 flex-1 flex flex-col">
+              <div className="px-6 py-4 flex-1 flex flex-col">
+                <div className="text-center mb-8">
+                   <h1 className="text-3xl font-serif font-bold text-brand-dark italic mb-1 uppercase tracking-tight">Site Visit Guide</h1>
+                   <p className="text-[10px] text-brand-dark/50 font-bold uppercase tracking-[0.3em] font-sans">
                      {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
                    </p>
                 </div>
 
                 {/* Profile Section */}
-                <div className="flex items-center gap-8 mb-12">
-                   <div className="w-32 h-32 rounded-full border-4 border-white shadow-xl overflow-hidden bg-brand-light/30 flex-shrink-0 relative">
-                     <div className="absolute inset-0 bg-gradient-to-tr from-brand-primary/20 to-transparent"></div>
-                     <UserIcon className="w-full h-full p-6 text-brand-primary opacity-30" />
+                <div className="flex items-center gap-6 mb-10 pb-8 border-b border-brand-dark/5">
+                   <div className="w-24 h-24 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white/50 flex-shrink-0 relative">
+                     {profileImage ? (
+                       <img src={profileImage} className="w-full h-full object-cover" alt="Profile" />
+                     ) : (
+                       <UserIcon className="w-full h-full p-5 text-brand-primary opacity-30" />
+                     )}
                    </div>
                    <div className="space-y-1">
-                     <h2 className="text-3xl font-serif font-black text-brand-dark tracking-tight leading-tight">
+                     <h2 className="text-2xl font-serif font-bold text-brand-dark tracking-tight leading-tight">
                        {name || 'Full Name'}
                      </h2>
-                     <p className="text-[10px] uppercase tracking-[0.2em] font-black text-brand-primary">
+                     <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-brand-primary font-sans">
                        {designation || 'Position Placeholder'}
                      </p>
-                     <p className="text-[10px] text-brand-dark/60 font-medium leading-relaxed max-w-[200px] mt-2">
-                       A trusted voice in Goa's luxury real estate space, {name.split(' ')[0] || 'the member'} is known for professional excellence and grounded approach.
+                     <p className="text-[9px] text-brand-dark/60 font-medium leading-tight max-w-[180px] mt-2 font-sans italic">
+                       Professional consultant specializing in luxury residential assets across Goa.
                      </p>
                    </div>
                 </div>
 
                 {/* Itinerary Section */}
                 <div className="flex-1">
-                  <div className="flex items-center gap-4 mb-6">
-                    <h3 className="text-2xl font-serif font-black text-brand-dark italic">Itinerary</h3>
+                  <div className="flex items-center gap-4 mb-4">
+                    <h3 className="text-xl font-serif font-bold text-brand-dark italic">Itinerary</h3>
                     <div className="h-px flex-1 bg-brand-dark/10"></div>
-                    <span className="text-[9px] uppercase font-bold text-brand-dark/40 italic">Duration ~ 2 Hours</span>
+                    <span className="text-[8px] uppercase font-bold text-brand-dark/40 italic font-sans">{calculateDuration()}</span>
                   </div>
 
-                  <div className="space-y-8 pl-2">
-                    {itinerary.map((item, i) => (
-                      <div key={item.id} className="flex gap-4 group">
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="h-2.5 w-2.5 rounded-full bg-brand-primary shadow-[0_0_10px_rgba(37,112,87,0.4)]"></div>
-                          {i !== itinerary.length - 1 && <div className="w-0.5 flex-1 bg-dotted border-l-2 border-brand-primary/20 border-dotted"></div>}
-                        </div>
-                        <div className="pb-4">
-                          <div className="flex items-baseline gap-2 mb-1">
-                            <span className="text-[11px] font-black text-brand-dark uppercase tracking-wide">{item.time || 'Time'}</span>
-                            <span className="text-[10px] font-bold text-brand-dark/50">—</span>
-                            <span className="text-[11px] font-bold text-brand-dark/80">{item.location || 'Location'}</span>
+                  <div className="space-y-6">
+                    {itinerary.map((item, i) => {
+                      const content = (item.activity + ' ' + item.location).toLowerCase();
+                      let Icon = MapPin;
+                      if (content.match(/pick[- ]?up|car|cab|drive|transfer/)) Icon = Car;
+                      else if (content.match(/visit|estate|property|site|building|la /)) Icon = Building2;
+                      else if (content.match(/meeting|talk|discuss|presentation/)) Icon = UserIcon;
+                      else if (content.match(/drop[- ]?off|finish|end|home/)) Icon = MapPin;
+                      else Icon = Home;
+
+                      return (
+                        <div key={item.id} className="flex gap-3 items-start">
+                          <div className="p-1.5 bg-white rounded shadow-sm">
+                             <Icon size={14} className="text-brand-primary" />
                           </div>
-                          <p className="text-[10px] text-brand-dark/50 font-medium leading-tight">
-                            {item.activity || 'Activity details will appear here...'}
-                          </p>
+                          <div>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-[10px] font-bold text-brand-dark uppercase tracking-wide font-sans">{item.time}</span>
+                              <span className="text-[10px] font-bold text-brand-dark font-serif italic">{item.location}</span>
+                            </div>
+                            <p className="text-[9px] text-brand-dark/50 font-medium leading-none mt-0.5 font-sans">
+                              {item.activity}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Footer Message */}
-                <div className="mt-auto pt-8 border-t border-brand-dark/5 text-center">
-                  <p className="text-[10px] font-serif font-bold italic text-brand-dark opacity-60">
-                    "True luxury is when everything is taken care of, so you only have to arrive."
+                <div className="mt-auto pt-6 text-center">
+                  <p className="text-[9px] font-serif font-bold italic text-brand-dark opacity-60">
+                    True luxury is when everything is taken care of.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Watermark */}
-            <div className="mt-4 flex justify-between items-center text-white/30">
-               <span className="text-[8px] uppercase tracking-widest font-black">Private & Confidential</span>
-               <span className="text-[8px] font-bold uppercase tracking-widest leading-none">© 2026 Vianaar Collections</span>
+            {/* Bottom Branding */}
+            <div className="mt-auto flex justify-center items-center py-2">
+               <span className="text-[8px] font-serif font-bold italic text-neutral-black/40">
+                 True luxury is when everything is taken care of, so you only have to arrive.
+               </span>
             </div>
           </div>
         </div>
@@ -362,7 +440,7 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
         <div className="bg-neutral-grey/30 border-l-4 border-neutral-sand p-4">
            <p className="text-[10px] text-neutral-black/50 leading-relaxed font-medium">
              <span className="font-black text-neutral-black">Designer Note:</span> This preview uses the <span className="text-brand-primary font-bold">Vianaar Site Visit Protocol (V2)</span>. 
-             Text alignment, fonts (Playfair Display), and color dynamics are computationally enforced to ensure brand uniformity across all sales outputs.
+             Text alignment, fonts (Cardo & Mulish), and color dynamics are computationally enforced to ensure brand uniformity across all sales outputs.
            </p>
         </div>
       </div>
