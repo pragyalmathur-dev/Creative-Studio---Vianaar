@@ -410,7 +410,9 @@ export default function CreativeEditor({ template, onBack, initialData, autoDown
 
           {/* Section 2: Top Bar Branding */}
           <div className="absolute top-[4%] left-0 right-0 flex justify-between items-center z-30 px-10">
-            <VianaarLogo className="scale-75 origin-left" />
+            <div className="brand flex items-center">
+              {/* Logo removed as per user request */}
+            </div>
             <div className="text-white font-sans text-[10px] tracking-widest font-bold opacity-90 uppercase">
               THE GOA EDIT
             </div>
