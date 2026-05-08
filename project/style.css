@@ -44,7 +44,7 @@ body {
   color: white;
 }
 
-.logo-img { width: 360px; height: auto; }
+.logo-img { width: 180px; height: auto; display: block; }
 
 .itinerary-item {
   display: flex;

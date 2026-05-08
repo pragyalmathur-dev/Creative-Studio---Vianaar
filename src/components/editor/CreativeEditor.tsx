@@ -393,24 +393,22 @@ export default function CreativeEditor({ template, onBack, initialData, autoDown
           </div>
 
           {/* Section 2: Top Bar Branding */}
-          <div className="absolute top-[3%] left-0 right-0 flex justify-center items-center z-20 px-8">
-            <div className="w-full flex justify-between items-center">
-              <div className="brand flex items-center">
-                <img 
-                  src="/assets/vianaar-logo.png" 
-                  alt="Vianaar Logo"
-                  className="brand-logo w-[210px] h-auto object-contain"
-                  onError={(e) => {
-                    // Fallback to Firebase URL if local file is not found
-                    e.currentTarget.src = "https://firebasestorage.googleapis.com/v0/b/firejet-97104.appspot.com/o/image-1715155986953.png?alt=media&token=8e92f5d2-1c5c-4469-8aa5-a9f4e2c8d8b6"
-                  }}
-                  crossOrigin="anonymous"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <div className="text-white font-sans text-[10px] tracking-widest font-bold opacity-80 uppercase">
-                THE GOA EDIT
-              </div>
+          <div className="absolute top-[4%] left-0 right-0 flex justify-between items-center z-30 px-10">
+            <div className="brand flex items-center">
+              <img 
+                src="https://firebasestorage.googleapis.com/v0/b/firejet-97104.appspot.com/o/image-1715155986953.png?alt=media&token=8e92f5d2-1c5c-4469-8aa5-a9f4e2c8d8b6" 
+                alt="Vianaar Logo"
+                className="brand-logo w-[180px] h-auto object-contain block opacity-100"
+                style={{ filter: 'brightness(0) invert(1)' }} // Force white if it's black
+                onError={(e) => {
+                  e.currentTarget.src = "https://www.vianaar.com/assets/images/logo-white.png";
+                  e.currentTarget.onerror = null;
+                }}
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <div className="text-white font-sans text-[10px] tracking-widest font-bold opacity-90 uppercase">
+              THE GOA EDIT
             </div>
           </div>
 
