@@ -11,6 +11,8 @@ import { motion, AnimatePresence } from 'motion/react';
 function AppContent() {
   const { user, profile, loading, signIn, loginWithEmail, registerWithEmail, resetPassword, logout } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [initialEditorData, setInitialEditorData] = useState<any>(null);
+  const [autoDownload, setAutoDownload] = useState(false);
   const [portal, setPortal] = useState<'admin' | 'user' | null>(null);
   const [authMode, setAuthMode] = useState<'options' | 'login' | 'register'>('options');
   const [email, setEmail] = useState('');
@@ -331,14 +333,32 @@ function AppContent() {
       {selectedTemplate ? (
         <CreativeEditor 
           template={selectedTemplate} 
-          onBack={() => setSelectedTemplate(null)} 
+          initialData={initialEditorData}
+          autoDownload={autoDownload}
+          onBack={() => {
+            setSelectedTemplate(null);
+            setInitialEditorData(null);
+            setAutoDownload(false);
+          }} 
         />
       ) : (
         <>
           {['admin', 'super_admin'].includes(profile?.role || '') ? (
-            <AdminDashboard />
+            <AdminDashboard 
+              onSelectTemplate={(template, data, shouldDownload) => {
+                setSelectedTemplate(template);
+                if (data) setInitialEditorData(data);
+                if (shouldDownload) setAutoDownload(true);
+              }}
+            />
           ) : (
-            <SalesDashboard onSelectTemplate={setSelectedTemplate} />
+            <SalesDashboard 
+              onSelectTemplate={(template, data, shouldDownload) => {
+                setSelectedTemplate(template);
+                if (data) setInitialEditorData(data);
+                if (shouldDownload) setAutoDownload(true);
+              }} 
+            />
           )}
         </>
       )}

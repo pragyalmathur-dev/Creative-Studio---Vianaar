@@ -7,7 +7,11 @@ import { handleFirestoreError, OperationType } from '../../lib/errorUtils';
 import { Plus, Users, Layout as LayoutIcon, Table as TableIcon, History, Search, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 
-export default function AdminDashboard() {
+interface AdminDashboardProps {
+  onSelectTemplate: (template: Template, initialData?: any, autoDownload?: boolean) => void;
+}
+
+export default function AdminDashboard({ onSelectTemplate }: AdminDashboardProps) {
   const { user, profile } = useAuth();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [history, setHistory] = useState<EditHistory[]>([]);
@@ -612,11 +616,21 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4 font-serif font-bold text-brand-dark">{item.templateName}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 text-[9px] uppercase font-bold rounded ring-1 ${
-                            item.action === 'download' ? 'ring-brand-accent-2/30 text-brand-accent-4 bg-brand-accent-2/5' : 'ring-brand-primary/30 text-brand-primary bg-brand-primary/5'
-                          }`}>
+                          <button 
+                            onClick={() => {
+                              const template = templates.find(t => t.id === item.templateId);
+                              if (template) {
+                                onSelectTemplate(template, item.contentSnapshot, item.action === 'download');
+                              } else {
+                                alert('Template not found.');
+                              }
+                            }}
+                            className={`px-2 py-0.5 text-[9px] uppercase font-bold rounded ring-1 transition-all hover:ring-brand-primary ${
+                              item.action === 'download' ? 'ring-brand-accent-2/30 text-brand-accent-4 bg-brand-accent-2/5 hover:bg-brand-accent-2/10' : 'ring-brand-primary/30 text-brand-primary bg-brand-primary/5 hover:bg-brand-primary/10'
+                            }`}
+                          >
                             {item.action}
-                          </span>
+                          </button>
                         </td>
                         <td className="px-6 py-4 text-xs font-mono text-neutral-black/50 whitespace-nowrap">
                           {item.timestamp?.toDate().toLocaleString()}

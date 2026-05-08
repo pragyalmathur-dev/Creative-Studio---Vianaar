@@ -6,21 +6,25 @@ import { Template, ItineraryItem } from '../../types';
 import { handleFirestoreError, OperationType } from '../../lib/errorUtils';
 import { Save, Download, ArrowLeft, Type, Clock, MapPin, Plus, Trash2, Camera, ShieldCheck, User as UserIcon, Car, Building2, Home, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { toPng } from 'html-to-image';
 
 interface CreativeEditorProps {
   template: Template;
   onBack: () => void;
+  initialData?: any;
+  autoDownload?: boolean;
 }
 
-export default function CreativeEditor({ template, onBack }: CreativeEditorProps) {
+export default function CreativeEditor({ template, onBack, initialData, autoDownload }: CreativeEditorProps) {
   const { user, profile } = useAuth();
   const isAdmin = ['admin', 'super_admin'].includes(profile?.role || '');
   
-  const [name, setName] = useState('Suraj Pinge');
-  const [designation, setDesignation] = useState('Vice President | Goa');
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [itinerary, setItinerary] = useState<ItineraryItem[]>([
+  const [name, setName] = useState(initialData?.name || 'Suraj Pinge');
+  const [designation, setDesignation] = useState(initialData?.designation || 'Vice President | Goa');
+  const [bio, setBio] = useState(initialData?.bio || 'Professional consultant specializing in luxury residential assets across Goa.');
+  const [profileImage, setProfileImage] = useState<string | null>(initialData?.profileImage || null);
+  const [selectedDate, setSelectedDate] = useState(initialData?.selectedDate || new Date().toISOString().split('T')[0]);
+  const [itinerary, setItinerary] = useState<ItineraryItem[]>(initialData?.itinerary || [
     { id: '1', time: '1:45 PM', location: 'Meeting Point', activity: 'Pick-up from your location' },
     { id: '2', time: '3:30 PM', location: 'La Marcella', activity: 'Visit to our luxury estate' },
     { id: '3', time: '4:30 PM', location: 'La Selva', activity: 'Visit to completed property' },
@@ -28,8 +32,17 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
   ]);
   
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [success, setSuccess] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (autoDownload && editorRef.current) {
+      setTimeout(() => {
+        handleDownload();
+      }, 1000); // Give extra time for images to load if triggered automatically
+    }
+  }, []);
 
   const calculateDuration = () => {
     if (itinerary.length < 2) return '0 Hours';
@@ -120,15 +133,39 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
   };
 
   const handleDownload = async () => {
+    if (!editorRef.current) return;
+    
+    setExporting(true);
     await logAction('download');
     
-    // Aesthetic feedback for "generation"
-    const btn = document.getElementById('download-btn');
-    if (btn) {
-      btn.classList.add('scale-95', 'opacity-50');
-      setTimeout(() => btn.classList.remove('scale-95', 'opacity-50'), 200);
+    try {
+      // Small delay to ensure any pending renders are complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const dataUrl = await toPng(editorRef.current, {
+        cacheBust: true,
+        quality: 1,
+        pixelRatio: 3, // Very high resolution for printing/sharing
+        style: {
+          transform: 'scale(1)',
+          transformOrigin: 'top left'
+        }
+      });
+      
+      const link = document.createElement('a');
+      const fileName = `Vianaar-${name.replace(/\s+/g, '-')}-${selectedDate}.png`;
+      link.download = fileName;
+      link.href = dataUrl;
+      link.click();
+      
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      console.error('Download failed', err);
+      alert('Failed to generate high-res image. Please try again or contact support.');
+    } finally {
+      setExporting(false);
     }
-    alert('High-resolution creative is being processed for download. This usually takes 5-10 seconds for rendering.');
   };
 
   return (
@@ -189,6 +226,13 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
                       onChange={e => setDesignation(e.target.value)}
                       className="w-full bg-neutral-grey border-b-2 border-transparent focus:border-brand-primary p-2 text-[10px] uppercase tracking-widest font-bold outline-none transition-all placeholder:text-neutral-black/20"
                       placeholder="Designation"
+                    />
+                    <textarea 
+                      value={bio}
+                      onChange={e => setBio(e.target.value)}
+                      className="w-full bg-neutral-grey border-b-2 border-transparent focus:border-brand-primary p-2 text-[10px] outline-none transition-all placeholder:text-neutral-black/20 resize-none"
+                      placeholder="Consultant Bio"
+                      rows={2}
                     />
                   </div>
                 </div>
@@ -291,9 +335,11 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
             <button 
               id="download-btn"
               onClick={handleDownload}
-              className="w-full bg-neutral-black text-white py-4 font-bold text-[10px] uppercase tracking-[0.2em] hover:bg-black transition-all flex items-center justify-center gap-3 shadow-lg"
+              disabled={exporting}
+              className="w-full bg-neutral-black text-white py-4 font-bold text-[10px] uppercase tracking-[0.2em] hover:bg-black transition-all flex items-center justify-center gap-3 shadow-lg disabled:opacity-50"
             >
-              <Download size={16} /> Export High-Res Creative
+              {exporting ? <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full"></div> : <Download size={16} />}
+              Export High-Res Creative
             </button>
           </div>
           
@@ -336,116 +382,99 @@ export default function CreativeEditor({ template, onBack }: CreativeEditorProps
           className="relative aspect-[9/16] w-full max-w-[500px] mx-auto shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden group border-8 border-white" 
           ref={editorRef}
         >
-          {/* Main Template Background - Using the exact provided background image */}
+          {/* Main Template Background Area */}
           <div className="absolute inset-0 z-0">
             <img 
-              src="https://firebasestorage.googleapis.com/v0/b/firejet-97104.appspot.com/o/image-1715152031174.png?alt=media&token=c4a6a7c3-3b4c-4c7b-b8a3-2c1f9b3f3b1a" 
+              src="https://firebasestorage.googleapis.com/v0/b/firejet-97104.appspot.com/o/image-1715153713028.png?alt=media&token=c193f773-1f15-46f9-8668-3e5f4d89615a" 
               className="w-full h-full object-cover select-none pointer-events-none" 
-              alt="Vianaar Template Background" 
-              referrerPolicy="no-referrer" 
+              alt="Vianaar Template Background"
+              crossOrigin="anonymous"
             />
           </div>
 
-          {/* Content Layer */}
-          <div className="relative z-10 h-full w-full flex flex-col pt-10 px-10">
+          {/* Content Layer - Precisely positioned to overlay the arch in the image */}
+          <div className="relative z-10 h-full w-full flex flex-col pt-[110px] px-12">
             
-            {/* Header Branding Area - Outside the arch width */}
-            <div className="flex justify-between items-center mb-10 px-2">
-              <div className="h-10">
-                <img 
-                  src="https://firebasestorage.googleapis.com/v0/b/firejet-97104.appspot.com/o/image-1715153368297.png?alt=media&token=7c1b5042-88d4-4286-90c7-e31a166fc73c" 
-                  className="h-full object-contain invert" // Inverting because the logo is white-on-black and template has dark green background in corners
-                  alt="Vianaar" 
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <div className="text-right">
-                <p className="font-sans font-bold text-white text-[12px] uppercase tracking-[0.2em]">
-                  THE GOA EDIT
-                </p>
-              </div>
-            </div>
-
-            {/* Segment 1: Title & Selected Date (Centered within the arch) */}
-            <div className="mt-6 text-center">
-               <h1 className="text-4xl font-serif font-bold text-brand-dark italic mb-1 uppercase tracking-tight">Site Visit Guide</h1>
-               <p className="text-[12px] text-brand-dark/40 font-bold uppercase tracking-[0.3em] font-sans">
-                 {new Date(selectedDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-               </p>
-            </div>
-
-            {/* Segment 2: Profile Section */}
-            <div className="mt-12 px-6">
-               <div className="flex items-center gap-6">
-                  <div className="w-24 h-24 rounded-full border-4 border-white shadow-xl overflow-hidden bg-white/50 flex-shrink-0 relative">
-                    {profileImage ? (
-                      <img src={profileImage} className="w-full h-full object-cover" alt="Profile" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-brand-primary/10">
-                        <UserIcon size={24} className="text-brand-primary opacity-30" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <h2 className="text-2xl font-serif font-bold text-brand-dark tracking-tight leading-tight">
-                      {name || 'Suraj Pinge'}
-                    </h2>
-                    <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-brand-primary font-sans">
-                      {designation || 'Vice President | Goa'}
-                    </p>
-                  </div>
-               </div>
-            </div>
-
-            {/* Segment 3: Itinerary */}
-            <div className="mt-14 px-6 flex-1">
-              <div className="flex items-center gap-4 mb-6">
-                <h3 className="text-2xl font-serif font-bold text-brand-dark italic">Itinerary</h3>
-                <div className="h-[1px] flex-1 bg-brand-dark/10"></div>
-                <span className="text-[10px] font-bold text-brand-dark/40 italic font-sans">{calculateDuration()}</span>
+            {/* Main Arch Content Area */}
+            <div className="flex-1 flex flex-col">
+              {/* Segment 1: Title & Date */}
+              <div className="text-center mb-10 h-[100px] flex flex-col justify-center">
+                 <h1 className="text-3xl font-serif font-bold text-brand-dark italic mb-1 uppercase tracking-tight">Site Visit Guide</h1>
+                 <p className="text-[11px] text-brand-dark/40 font-bold uppercase tracking-[0.3em] font-sans">
+                   {new Date(selectedDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                 </p>
               </div>
 
-              <div className="space-y-6 relative">
-                {/* Timeline vertical bar */}
-                <div className="absolute left-[17px] top-4 bottom-4 w-0.5 border-l-2 border-brand-primary/20 border-dotted"></div>
-                
-                {itinerary.map((item) => {
-                  const content = (item.activity + ' ' + item.location).toLowerCase();
-                  let Icon = Building2;
-                  if (content.match(/pick[- ]?up|car|cab|drive|transfer|travel/)) Icon = Car;
-                  else if (content.match(/visit|estate|property|site|building|la /)) Icon = Building2;
-                  else if (content.match(/meeting|talk|discuss|presentation/)) Icon = UserIcon;
-                  else if (content.match(/drop[- ]?off|finish|end|home/)) Icon = MapPin;
-                  
-                  return (
-                    <div key={item.id} className="flex gap-4 items-start relative z-10">
-                      <div className="w-[34px] h-[34px] rounded-full bg-white shadow-md flex items-center justify-center flex-shrink-0 border border-brand-primary/5">
-                         <Icon size={14} className="text-brand-primary" />
-                      </div>
-                      <div className="pt-0.5">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-[11px] font-bold text-brand-dark uppercase tracking-wide font-sans">{item.time}</span>
-                          <span className="text-[11px] font-bold text-brand-dark font-serif italic">— {item.location}</span>
+              {/* Segment 2: Profile Section */}
+              <div className="px-2 mb-10 h-[150px] flex flex-col justify-center">
+                 <div className="flex items-center gap-5">
+                    <div className="w-20 h-20 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white/50 flex-shrink-0 relative">
+                      {profileImage ? (
+                        <img 
+                          src={profileImage} 
+                          className="w-full h-full object-cover" 
+                          alt="Profile" 
+                          crossOrigin="anonymous"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-brand-primary/10">
+                          <UserIcon size={20} className="text-brand-primary opacity-30" />
                         </div>
-                        <p className="text-[10px] text-brand-dark/50 font-medium leading-tight mt-1 font-sans">
-                          {item.activity}
-                        </p>
-                      </div>
+                      )}
                     </div>
-                  );
-                })}
+                    <div className="space-y-0.5">
+                      <h2 className="text-xl font-serif font-bold text-brand-dark tracking-tight leading-tight">
+                        {name || 'Suraj Pinge'}
+                      </h2>
+                      <p className="text-[9px] uppercase tracking-[0.15em] font-bold text-brand-primary font-sans">
+                        {designation || 'Vice President | Goa'}
+                      </p>
+                      <p className="text-[9px] text-brand-dark/60 font-medium leading-relaxed max-w-[180px] mt-1 font-sans italic line-clamp-2">
+                        {bio}
+                      </p>
+                    </div>
+                 </div>
+              </div>
+
+              {/* Segment 3: Itinerary Section */}
+              <div className="px-2 h-[220px]">
+                <div className="flex items-center gap-3 mb-5">
+                  <h3 className="text-xl font-serif font-bold text-brand-dark italic">Itinerary</h3>
+                  <div className="h-[1px] flex-1 bg-brand-dark/10"></div>
+                  <span className="text-[9px] font-bold text-brand-dark/40 italic font-sans">{calculateDuration()}</span>
+                </div>
+
+                <div className="space-y-4 relative">
+                  <div className="absolute left-[15px] top-4 bottom-4 w-0.5 border-l-2 border-brand-primary/20 border-dotted"></div>
+                  
+                  {itinerary.slice(0, 4).map((item) => {
+                    const content = (item.activity + ' ' + item.location).toLowerCase();
+                    let Icon = Building2;
+                    if (content.match(/pick[- ]?up|car|cab|drive|transfer|travel/)) Icon = Car;
+                    else if (content.match(/visit|estate|property|site|building|la /)) Icon = Building2;
+                    else if (content.match(/meeting|talk|discuss|presentation/)) Icon = UserIcon;
+                    else if (content.match(/drop[- ]?off|finish|end|home/)) Icon = MapPin;
+                    
+                    return (
+                      <div key={item.id} className="flex gap-3 items-start relative z-10">
+                        <div className="w-[30px] h-[30px] rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0 border border-brand-primary/5">
+                           <Icon size={12} className="text-brand-primary" />
+                        </div>
+                        <div className="pt-0.5">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-[10px] font-bold text-brand-dark uppercase tracking-wide font-sans">{item.time}</span>
+                            <span className="text-[10px] font-bold text-brand-dark font-serif italic">— {item.location}</span>
+                          </div>
+                          <p className="text-[9px] text-brand-dark/50 font-medium leading-tight mt-0.5 font-sans line-clamp-1">
+                            {item.activity}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-
-            {/* Segment 4: Footer Messaging */}
-            <div className="mt-auto mb-10 text-center px-6">
-               <div className="h-[1px] w-12 bg-brand-dark/10 mx-auto mb-4"></div>
-               <p className="text-[11px] font-serif font-bold italic text-brand-dark opacity-60 leading-tight">
-                 True luxury is when everything is taken care of,<br />
-                 so you only have to arrive.
-               </p>
-            </div>
-
           </div>
         </div>
 

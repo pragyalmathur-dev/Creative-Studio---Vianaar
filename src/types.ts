@@ -53,7 +53,10 @@ export interface EditHistory {
   timestamp: any;
   contentSnapshot: {
     name?: string;
-    itinerary?: string;
+    designation?: string;
     bio?: string;
+    profileImage?: string;
+    selectedDate?: string;
+    itinerary?: ItineraryItem[];
   };
 }

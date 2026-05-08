@@ -8,7 +8,7 @@ import { FileEdit, History, Download, Eye, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface SalesDashboardProps {
-  onSelectTemplate: (template: Template) => void;
+  onSelectTemplate: (template: Template, initialData?: any, autoDownload?: boolean) => void;
 }
 
 export default function SalesDashboard({ onSelectTemplate }: SalesDashboardProps) {
@@ -145,12 +145,24 @@ export default function SalesDashboard({ onSelectTemplate }: SalesDashboardProps
                   <tr key={item.id} className="text-sm hover:bg-neutral-cream transition-colors duration-200">
                     <td className="px-6 py-4 font-semibold text-brand-dark">{item.templateName}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-[10px] uppercase font-bold rounded-full ${
-                        item.action === 'download' ? 'bg-brand-light text-brand-dark' : 'bg-brand-primary/10 text-brand-primary'
-                      }`}>
-                        {item.action === 'download' ? <Download size={10} className="inline mr-1" /> : null}
-                        {item.action}
-                      </span>
+                      <button 
+                        onClick={() => {
+                          const template = templates.find(t => t.id === item.templateId);
+                          if (template) {
+                            onSelectTemplate(template, item.contentSnapshot, item.action === 'download');
+                          } else {
+                            alert('Base template not found. It might have been removed.');
+                          }
+                        }}
+                        className={`group px-3 py-1.5 text-[10px] uppercase font-bold rounded-full flex items-center gap-2 transition-all ${
+                          item.action === 'download' 
+                            ? 'bg-brand-light text-brand-dark hover:bg-brand-primary hover:text-white' 
+                            : 'bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white'
+                        }`}
+                      >
+                        {item.action === 'download' ? <Download size={10} /> : <Eye size={10} />}
+                        {item.action === 'download' ? 'Download' : 'View Snapshot'}
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-neutral-black/60">
                       {item.timestamp?.toDate().toLocaleString()}
