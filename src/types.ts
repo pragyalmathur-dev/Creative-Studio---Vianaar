@@ -1,6 +1,13 @@
 export type UserRole = 'super_admin' | 'admin' | 'sales';
 export type UserStatus = 'pending' | 'active' | 'restricted' | 'rejected';
 
+export interface ItineraryItem {
+  id: string;
+  time: string;
+  location: string;
+  activity: string;
+}
+
 export interface UserProfile {
   uid?: string;
   email: string;
